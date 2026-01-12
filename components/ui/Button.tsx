@@ -5,13 +5,12 @@ import React from 'react';
 import {
     Text,
     Pressable,
-    StyleSheet,
     ActivityIndicator,
     ViewStyle,
     TextStyle
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { SPACING, RADIUS, FONT_SIZE, FONT_WEIGHT, ANIMATION } from '../../constants/design';
+import { SPACING, RADIUS, FONT_SIZE, FONT_WEIGHT } from '../../constants/design';
 import { useTheme } from '../../context/ThemeContext';
 import Animated, {
     useAnimatedStyle,

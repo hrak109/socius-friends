@@ -1,7 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Image, KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Image, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Avatar, Bubble, GiftedChat, IMessage, User } from 'react-native-gifted-chat';
 import { PROFILE_AVATAR_MAP, SOCIUS_AVATAR_MAP } from '../constants/avatars';
 import { useAuth } from '../context/AuthContext';
@@ -29,17 +30,25 @@ interface ChatInterfaceProps {
     isModal?: boolean;
     initialMessage?: string;
     context?: string; // NEW: Context support
+    friendId?: number; // NEW: For DM chats with users
+    companionId?: number; // NEW: For specific Socius companions
+
+    friendName?: string; // NEW: Name of friend/bot
+    friendAvatar?: string; // NEW: Avatar key/url of friend/bot
+    showHeader?: boolean; // NEW: Should show header
 }
 
-export default function ChatInterface({ onClose, isModal = false, initialMessage = '', context = 'global' }: ChatInterfaceProps) {
+export default function ChatInterface({ onClose, isModal = false, initialMessage = '', context = 'global', friendId, companionId, friendName, friendAvatar, showHeader = true }: ChatInterfaceProps) {
     const { colors, avatarId } = useTheme();
     const { t, language } = useLanguage();
     const { displayName, displayAvatar } = useUserProfile();
 
-    const botUser: User = {
+    const botUser: User = React.useMemo(() => ({
         _id: 2,
-        name: t('chat.socius'),
-    };
+        name: friendName || t('chat.socius'), // Use friendName if available
+        avatar: friendAvatar, // Store avatar key/url here
+    }), [t, friendName, friendAvatar]);
+
     const { user } = useAuth(); // Use AuthContext for user info if available
     const [messages, setMessages] = useState<IMessage[]>([]);
     const [text, setText] = useState(initialMessage);
@@ -47,8 +56,32 @@ export default function ChatInterface({ onClose, isModal = false, initialMessage
     const [isWaitingForResponse, setIsWaitingForResponse] = useState(false); // NEW: Disable input state
     const responseTimeoutRef = useRef<any>(null);
     const selectedModel = 'soc-model';
-    const { lastNotificationTime, refreshNotifications } = useNotifications();
+    const { refreshNotifications, lastMessage, lastNotificationTime } = useNotifications();
     const textInputRef = useRef<any>(null);
+    const processedMessageIds = useRef<Set<number>>(new Set());
+
+    // Listen for real-time messages from SSE via NotificationContext
+    useEffect(() => {
+        if (lastMessage && lastMessage.context === context && lastMessage.content) {
+            // Avoid processing the same message twice
+            if (processedMessageIds.current.has(lastMessage.id)) {
+                return;
+            }
+            processedMessageIds.current.add(lastMessage.id);
+
+            // Append the new message from SSE
+            const newMsg: IMessage = {
+                _id: lastMessage.id,
+                text: lastMessage.content,
+                createdAt: new Date(),
+                user: botUser,
+            };
+            setMessages((prev) => GiftedChat.append(prev, [newMsg]));
+            setIsTyping(false);
+            setIsWaitingForResponse(false);
+            if (responseTimeoutRef.current) clearTimeout(responseTimeoutRef.current);
+        }
+    }, [lastMessage?.timestamp, lastMessage?.id, lastMessage?.context, lastMessage?.content, context, botUser]);
 
     useEffect(() => {
         if (initialMessage) {
@@ -69,7 +102,7 @@ export default function ChatInterface({ onClose, isModal = false, initialMessage
             const fetchHistory = async () => {
                 try {
                     const res = await api.get('/history', {
-                        params: { model: selectedModel, context } // Pass context
+                        params: { model: selectedModel, context }
                     });
 
                     if (!isActive) return;
@@ -77,11 +110,8 @@ export default function ChatInterface({ onClose, isModal = false, initialMessage
                     const history = res.data || [];
 
                     const formattedMessages: IMessage[] = history.map((msg: any) => {
-                        // SAFEGUARDS:
-                        // 1. Force ID to string/number
                         const safeId = msg.id || Math.random();
 
-                        // 2. Safe Timestamp
                         let safeDate = new Date();
                         try {
                             safeDate = fixTimestamp(msg.created_at);
@@ -89,7 +119,6 @@ export default function ChatInterface({ onClose, isModal = false, initialMessage
                             console.error('Date parse error', e);
                         }
 
-                        // 3. Safe Avatar
                         let safeAvatar = user?.photo;
                         if (displayAvatar && PROFILE_AVATAR_MAP[displayAvatar]) {
                             safeAvatar = PROFILE_AVATAR_MAP[displayAvatar];
@@ -133,7 +162,8 @@ export default function ChatInterface({ onClose, isModal = false, initialMessage
             return () => {
                 isActive = false;
             };
-        }, [selectedModel, displayName, user?.name, displayAvatar, user?.photo, t, lastNotificationTime, context]) // Added context dependency
+            // eslint-disable-next-line react-hooks/exhaustive-deps
+        }, [context, lastNotificationTime]) // Only re-create callback when context changes
     );
 
     const handleSendQuestion = useCallback(async (text: string) => {
@@ -151,7 +181,8 @@ export default function ChatInterface({ onClose, isModal = false, initialMessage
             await api.post('/ask', {
                 q_text: text,
                 model: selectedModel,
-                context // Pass context
+                context, // Pass context
+                companion_id: companionId // Pass companion ID
             });
         } catch (error) {
             console.error('Error sending question:', error);
@@ -160,6 +191,7 @@ export default function ChatInterface({ onClose, isModal = false, initialMessage
             if (responseTimeoutRef.current) clearTimeout(responseTimeoutRef.current);
             appendBotMessage('Sorry, I encountered an error sending your message.');
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [selectedModel, context]);
 
     const onSend = useCallback((newMessages: IMessage[] = []) => {
@@ -221,7 +253,7 @@ export default function ChatInterface({ onClose, isModal = false, initialMessage
                 editable={!isWaitingForResponse} // Disable input
             />
             <TouchableOpacity
-                style={[styles.customSendButton, { backgroundColor: isWaitingForResponse ? colors.border : colors.primary }]}
+                style={[styles.customSendButton, { backgroundColor: (!text.trim() || isWaitingForResponse) ? colors.border : '#007AFF' }]}
                 onPress={() => {
                     if (text.trim()) {
                         onSend([{
@@ -237,7 +269,7 @@ export default function ChatInterface({ onClose, isModal = false, initialMessage
                 }}
                 disabled={!text.trim() || isWaitingForResponse} // Disable button
             >
-                <Ionicons name="send" size={20} color={text.trim() ? colors.buttonText : colors.textSecondary} />
+                <Ionicons name="send" size={20} color={(!text.trim() || isWaitingForResponse) ? colors.textSecondary : '#FFFFFF'} />
             </TouchableOpacity>
         </View>
     );
@@ -263,34 +295,50 @@ export default function ChatInterface({ onClose, isModal = false, initialMessage
                 />
             );
         }
-        return <SociusAvatar source={SOCIUS_AVATAR_MAP[avatarId] || SOCIUS_AVATAR_MAP['socius-icon']} />;
+
+        // BOT AVATAR LOGIC
+        // 1. Try to use friendAvatar prop (key) from SOCIUS_AVATAR_MAP
+        // 2. Try to use friendAvatar prop as URI (if it's a URL)
+        // 3. Fallback to default
+
+        let source;
+        if (friendAvatar && SOCIUS_AVATAR_MAP[friendAvatar]) {
+            source = SOCIUS_AVATAR_MAP[friendAvatar];
+        } else if (friendAvatar) {
+            source = { uri: friendAvatar }; // Fallback for URLs
+        } else {
+            source = SOCIUS_AVATAR_MAP['socius-icon']; // Default
+        }
+
+        return <SociusAvatar source={source} />;
     };
 
     return (
-        <KeyboardAvoidingView
+        <SafeAreaView
             style={[styles.container, { backgroundColor: colors.background }]}
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            keyboardVerticalOffset={0}
+            edges={['left', 'right', 'bottom']}
         >
-            <View style={[styles.header, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
-                {onClose ? (
-                    <TouchableOpacity onPress={onClose} style={styles.backButton}>
-                        {isModal ? (
-                            <Ionicons name="close" size={24} color={colors.text} />
-                        ) : (
-                            <Ionicons name="arrow-back" size={24} color={colors.text} />
-                        )}
-                    </TouchableOpacity>
-                ) : (
+            {showHeader && (
+                <View style={[styles.header, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
+                    {onClose ? (
+                        <TouchableOpacity onPress={onClose} style={styles.backButton}>
+                            {isModal ? (
+                                <Ionicons name="close" size={24} color={colors.text} />
+                            ) : (
+                                <Ionicons name="arrow-back" size={24} color={colors.text} />
+                            )}
+                        </TouchableOpacity>
+                    ) : (
+                        <View style={{ width: 40 }} />
+                    )}
+                    <Text style={[styles.headerTitle, { color: colors.text }]}>
+                        {context && context !== 'global'
+                            ? `${t('chat.title')} (${context.charAt(0).toUpperCase() + context.slice(1)})`
+                            : t('chat.title')}
+                    </Text>
                     <View style={{ width: 40 }} />
-                )}
-                <Text style={[styles.headerTitle, { color: colors.text }]}>
-                    {context && context !== 'global'
-                        ? `${t('chat.title')} (${context.charAt(0).toUpperCase() + context.slice(1)})`
-                        : t('chat.title')}
-                </Text>
-                <View style={{ width: 40 }} />
-            </View>
+                </View>
+            )}
 
             <GiftedChat
                 messages={messages}
@@ -318,8 +366,9 @@ export default function ChatInterface({ onClose, isModal = false, initialMessage
                     right: { color: 'rgba(255, 255, 255, 0.7)' }
                 }}
                 keyboardShouldPersistTaps="handled"
+                bottomOffset={Platform.OS === 'ios' ? 34 : 0}
             />
-        </KeyboardAvoidingView>
+        </SafeAreaView>
     );
 }
 

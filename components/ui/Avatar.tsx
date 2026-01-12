@@ -2,8 +2,7 @@
  * Reusable Avatar component with fallback initials.
  */
 import React from 'react';
-import { View, Image, Text, StyleSheet, ViewStyle } from 'react-native';
-import { RADIUS, FONT_SIZE } from '../../constants/design';
+import { View, Image, Text, ViewStyle } from 'react-native';
 import { useTheme } from '../../context/ThemeContext';
 import { PROFILE_AVATAR_MAP } from '../../constants/avatars';
 

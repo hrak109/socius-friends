@@ -1,0 +1,50 @@
+# EAS Build Ignore File
+# This overrides .gitignore for EAS builds
+# We want to INCLUDE google-services files in builds
+
+# dependencies
+node_modules/
+
+# Expo
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+*.apk
+.agent/
+
+# Native (generated during build)
+.kotlin/
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# Metro
+.metro-health-check*
+
+# debug
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# macOS
+.DS_Store
+*.pem
+
+# local env files
+.env*.local
+
+# typescript
+*.tsbuildinfo
+
+app-example
+
+# generated native folders - ignore these
+/ios
+/android
+
+# NOTE: google-services.json and GoogleService-Info.plist are NOT ignored here
+# so they WILL be included in EAS builds

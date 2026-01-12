@@ -1,17 +1,15 @@
 /**
  * Reusable Badge component for notifications and counts.
  */
-import React from 'react';
-import { View, Text, StyleSheet, ViewStyle } from 'react-native';
-import { SPACING, RADIUS, FONT_SIZE } from '../../constants/design';
+import React, { useEffect } from 'react';
+import { Text, StyleSheet, ViewStyle } from 'react-native';
+import { RADIUS } from '../../constants/design';
 import Animated, {
     useAnimatedStyle,
     useSharedValue,
     withSpring,
     withSequence,
-    withTiming,
 } from 'react-native-reanimated';
-import { useEffect } from 'react';
 
 interface BadgeProps {
     count?: number;
@@ -48,7 +46,7 @@ export default function Badge({
                 withSpring(1, { damping: 6, stiffness: 300 })
             );
         }
-    }, [count, animated]);
+    }, [count, animated, scale]);
 
     const animatedStyle = useAnimatedStyle(() => ({
         transform: [{ scale: scale.value }],

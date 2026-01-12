@@ -6,18 +6,16 @@ import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-si
 import { Ionicons } from '@expo/vector-icons';
 import { useSession } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
-import { useLanguage } from '../context/LanguageContext';
 import api from '../services/api';
 
 GoogleSignin.configure({
-    webClientId: '574695722322-g6r6uq8i58h65tgs7u6oujbt1d8sfalv.apps.googleusercontent.com',
+    webClientId: '801464542210-b08v4fc2tsk7ma3bfu30jc1frueps1on.apps.googleusercontent.com',
 });
 
 export default function LoginScreen() {
     const router = useRouter();
     const { signIn, session } = useSession();
     const { colors } = useTheme();
-    const { t } = useLanguage();
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -25,7 +23,7 @@ export default function LoginScreen() {
         if (session) {
             router.replace('/messages');
         }
-    }, [session]);
+    }, [session, router]);
 
     const handleGoogleSignIn = async () => {
         setIsLoading(true);
@@ -42,7 +40,7 @@ export default function LoginScreen() {
             const response = await api.post('/auth/google', { id_token: idToken });
             const { access_token } = response.data;
 
-            await signIn(access_token, signInResult.data);
+            await signIn(access_token);
             router.replace('/messages');
         } catch (err: any) {
             if (err.code === statusCodes.SIGN_IN_CANCELLED) {

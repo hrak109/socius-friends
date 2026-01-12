@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, FlatList, TextInput, Image, Modal, Alert, ActivityIndicator, Platform } from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity, FlatList, TextInput, Image, Modal, Alert, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import { useNotifications } from '../context/NotificationContext';
 import { useLanguage } from '../context/LanguageContext';
-import { useRouter } from 'expo-router';
+import { useRouter, Stack } from 'expo-router';
 import api from '../services/api';
 import { PROFILE_AVATAR_MAP } from '../constants/avatars';
 
@@ -197,16 +197,18 @@ export default function FriendsScreen() {
     );
 
     return (
-        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-            <View style={[styles.header, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
-                <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-                    <Ionicons name="arrow-back" size={24} color={colors.text} />
-                </TouchableOpacity>
-                <Text style={[styles.headerTitle, { color: colors.text }]}>{t('friends.title')}</Text>
-                <TouchableOpacity onPress={() => setIsAddModalVisible(true)}>
-                    <Ionicons name="person-add" size={24} color={colors.primary} />
-                </TouchableOpacity>
-            </View>
+        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['left', 'right']}>
+            <Stack.Screen
+                options={{
+                    headerRight: () => (
+                        <TouchableOpacity onPress={() => setIsAddModalVisible(true)} style={{ marginRight: 10 }}>
+                            <Ionicons name="person-add" size={24} color={colors.primary} />
+                        </TouchableOpacity>
+                    ),
+                    title: t('friends.title')
+                }}
+            />
+            {/* Custom Header Removed */}
 
             <View style={styles.tabContainer}>
                 <View style={[styles.tabPillContainer, { backgroundColor: colors.inputBackground }]}>
@@ -310,26 +312,12 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: '#f0f2f5',
     },
-    header: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingHorizontal: 20,
-        paddingVertical: 15,
-    },
-    backButton: {
-        padding: 5,
-    },
-    headerTitle: {
-        fontSize: 22,
-        fontWeight: '700',
-        color: '#1a1a1a',
-    },
+    // header styles removed
     tabContainer: {
-        paddingVertical: 10,
+        paddingVertical: 5, // Reduced from 10
         paddingHorizontal: 20,
-        borderBottomWidth: 1,
-        borderBottomColor: '#f0f0f0', // Can be refined later in JS if needed
+        borderBottomWidth: 0, // Removed border
+        borderBottomColor: '#f0f0f0',
     },
     tabPillContainer: {
         flexDirection: 'row',
@@ -339,7 +327,7 @@ const styles = StyleSheet.create({
     },
     tabButton: {
         flex: 1,
-        paddingVertical: 10,
+        paddingVertical: 8, // Reduced from 10
         alignItems: 'center',
         borderRadius: 20,
     },
@@ -360,7 +348,7 @@ const styles = StyleSheet.create({
     },
     listContent: {
         padding: 20,
-        paddingBottom: 100,
+        paddingBottom: 20, // Reduced from 100
     },
     friendCard: {
         flexDirection: 'row',

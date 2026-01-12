@@ -12,7 +12,7 @@ import {
     Pressable
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { SPACING, RADIUS, FONT_SIZE, SHADOWS } from '../../constants/design';
+import { SPACING, RADIUS, FONT_SIZE } from '../../constants/design';
 import { useTheme } from '../../context/ThemeContext';
 import Animated, {
     useAnimatedStyle,
@@ -43,7 +43,7 @@ export default function Input({
     containerStyle,
     ...textInputProps
 }: InputProps) {
-    const { colors, isDark } = useTheme();
+    const { colors } = useTheme();
     const [isFocused, setIsFocused] = useState(false);
     const focus = useSharedValue(0);
 

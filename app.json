@@ -1,35 +1,49 @@
 {
-    "expo": {
-        "name": "Socius Friends",
-        "slug": "socius-friends",
-        "version": "1.0.0",
-        "orientation": "portrait",
-        "icon": "./assets/icon.png",
-        "scheme": "socius-friends",
-        "userInterfaceStyle": "automatic",
-        "newArchEnabled": true,
-        "ios": {
-            "supportsTablet": true,
-            "bundleIdentifier": "com.hai.socius.friends"
-        },
-        "android": {
-            "adaptiveIcon": {
-                "foregroundImage": "./assets/adaptive-icon.png",
-                "backgroundColor": "#ffffff"
-            },
-            "package": "com.hai.socius.friends"
-        },
-        "web": {
-            "bundler": "metro",
-            "output": "static"
-        },
-        "plugins": [
-            "expo-router",
-            "expo-secure-store",
-            "@react-native-google-signin/google-signin"
-        ],
-        "experiments": {
-            "typedRoutes": true
+  "expo": {
+    "name": "Socius Friends",
+    "slug": "socius-friends",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "scheme": "socius-friends",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.hai.socius.friends",
+      "googleServicesFile": "./GoogleService-Info.plist"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "package": "com.hai.socius.friends",
+      "googleServicesFile": "./google-services.json",
+      "launchMode": "singleTask"
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "static"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      [
+        "@react-native-google-signin/google-signin",
+        {
+          "iosUrlScheme": "com.googleusercontent.apps.801464542210-r07a4et9lqbd25kbe2602lu2uo4lerf5"
         }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "cecbe6a3-9368-404f-88f6-66805cd26417"
+      }
     }
+  }
 }

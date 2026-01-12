@@ -1,8 +1,11 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { AppState, AppStateStatus, Platform } from 'react-native';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useRef } from 'react';
+import { AppState, AppStateStatus, Platform, Alert } from 'react-native';
+import * as Device from 'expo-device';
 import api from '../services/api';
 import { useSession } from './AuthContext';
 import * as Notifications from 'expo-notifications';
+import { createNotificationStream, closeNotificationStream } from '../services/eventSource';
+import { router, useSegments } from 'expo-router';
 
 interface NotificationContextType {
     unreadCount: number;
@@ -10,7 +13,10 @@ interface NotificationContextType {
     unreadDirectMessages: number;
     friendRequests: number;
     lastNotificationTime: Date | null;
+    lastMessage: { id: number; context: string; content: string; timestamp: number } | null;
+    lastDM: { id: number; senderId: number; content: string; timestamp: number } | null;
     refreshNotifications: () => Promise<void>;
+    setRouteSegments: (segments: string[]) => void;
 }
 
 const NotificationContext = createContext<NotificationContextType>({
@@ -19,7 +25,10 @@ const NotificationContext = createContext<NotificationContextType>({
     unreadDirectMessages: 0,
     friendRequests: 0,
     lastNotificationTime: null,
+    lastMessage: null,
+    lastDM: null,
     refreshNotifications: async () => { },
+    setRouteSegments: () => { },
 });
 
 export const useNotifications = () => useContext(NotificationContext);
@@ -31,35 +40,18 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     const [unreadDirectMessages, setUnreadDirectMessages] = useState(0);
     const [friendRequests, setFriendRequests] = useState(0);
     const [lastNotificationTime, setLastNotificationTime] = useState<Date | null>(null);
+    const [lastMessage, setLastMessage] = useState<{ id: number; context: string; content: string; timestamp: number } | null>(null);
+    const [lastDM, setLastDM] = useState<{ id: number; senderId: number; content: string; timestamp: number } | null>(null);
+    const sseCleanupRef = useRef<(() => void) | null>(null);
+    const segmentsRef = useRef<string[]>([]);
 
-    const refreshNotifications = async () => {
+    const setRouteSegments = useCallback((segments: string[]) => {
+        segmentsRef.current = segments;
+    }, []);
+
+    const refreshNotifications = useCallback(async () => {
         if (!session) return;
         try {
-            // We need a backend endpoint for unread count, or we infer from recent messages
-            // For now, let's assume we fetch recent conversations and count unread
-            // Or add a specific endpoint. Let's try fetching recent and summing unread.
-            // Since backend doesn't explicitly return unread count yet, we might need to update backend or estimate.
-            // For this quick fix, let's assume valid response and just count "new" items if any (mock logic or partial implementation)
-
-            // BETTER APPROACH: Add a lightweight endpoint or just poll recent messages and check if last message is from 'other' and not read?
-            // Existing /messages/recent returns last_message but not read status.
-            // Let's rely on a new endpoint or just placeholder for now until backend support is added?
-            // Actually, let's just fetch queries to check connectivity, but for real count we need API support.
-
-            // Checking socius_api.py, DirectMessage has 'read_at'.
-            // We can add an endpoint /notifications/unread-count
-
-            // For now, to avoid backend changes if possible, we can poll /messages/recent and see if we can deduce anything.
-            // Actually, without read_at in response, we can't.
-
-            // Let's implement a simple poller that sets a mock number or checks a new endpoint we "wish" existed.
-            // Wait, I can Modify backend!
-
-            // Let's add GET /notifications/unread-count to backend first? 
-            // The user didn't ask for backend changes but "in app notification badge" implies full stack.
-            // I'll stick to a simple poller that fetches /friends/requests as a proxy for "notifications" for now?
-            // And maybe assume 0 for messages until visited.
-
             const res = await api.get('/notifications/unread');
             const total = res.data.total;
             const socius = res.data.socius_unread || 0;
@@ -74,51 +66,179 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
         } catch (error) {
             console.log('Failed to fetch notifications');
         }
-    };
+    }, [session]);
+
+    const registerForPushNotifications = useCallback(async () => {
+        if (Platform.OS === 'android') {
+            await Notifications.setNotificationChannelAsync('default', {
+                name: 'default',
+                importance: Notifications.AndroidImportance.MAX,
+                vibrationPattern: [0, 250, 250, 250],
+                lightColor: '#FF231F7C',
+            });
+        }
+
+        if (!Device.isDevice) {
+            console.log('Must use physical device for Push Notifications');
+            return;
+        }
+
+        const { status: existingStatus } = await Notifications.getPermissionsAsync();
+        let finalStatus = existingStatus;
+        if (existingStatus !== 'granted') {
+            const { status } = await Notifications.requestPermissionsAsync();
+            finalStatus = status;
+        }
+        if (finalStatus !== 'granted') {
+            console.log('Failed to get push token for push notification!');
+            return;
+        }
+
+        try {
+            const pushTokenString = (await Notifications.getDevicePushTokenAsync()).data;
+            console.log('Generated Device Push Token:', pushTokenString);
+
+            // Send to backend
+            if (pushTokenString) {
+                await api.post('/notifications/token', { token: pushTokenString, app_id: 'socius-friends' });
+                console.log('Token sent successfully');
+            }
+        } catch (e: any) {
+            console.error('Error fetching push token:', e);
+        }
+    }, [session]);
+
+    const handleNotificationResponse = useCallback((response: Notifications.NotificationResponse) => {
+        const url = response.notification.request.content.data?.url as string | undefined;
+        if (url && url.startsWith('socius-friends://')) {
+            console.log('Handling notification URL:', url);
+            try {
+                const path = url.replace('socius-friends://', '');
+                const route = path.startsWith('/') ? path : `/${path}`;
+
+                // Parse params
+                const pathParts = route.split('?')[0].split('/').filter(Boolean);
+                const targetId = pathParts[pathParts.length - 1]; // chat, [id] or just chat
+                const currentSegments = segmentsRef.current; // access via ref to be fresh
+
+                const isOnChat = currentSegments.some(s => s === 'chat');
+                const isSameId = currentSegments.some(s => s === targetId);
+
+                if (isOnChat && isSameId) {
+                    console.log('Already on chat screen, ignoring deep link');
+                    return;
+                }
+
+                setTimeout(() => {
+                    router.push(route as any);
+                }, 500);
+            } catch (e) {
+                console.error('Failed to handle deep link:', e);
+            }
+        }
+    }, []);
 
     useEffect(() => {
         if (session) {
             refreshNotifications();
 
+            // Set up SSE stream for real-time updates
+            const setupSSE = async () => {
+                const cleanup = await createNotificationStream(
+                    (event) => {
+                        if (event.type === 'message') {
+                            // New Socius message arrived
+                            setLastNotificationTime(new Date());
+                            setLastMessage({
+                                id: event.data?.id || Date.now(),
+                                context: event.data?.context || 'global',
+                                content: event.data?.content || '',
+                                timestamp: Date.now()
+                            });
+                            refreshNotifications();
+                        } else if (event.type === 'dm') {
+                            // New direct message arrived
+                            setLastNotificationTime(new Date());
+                            setLastDM({
+                                id: event.data?.id || Date.now(),
+                                senderId: event.data?.sender_id || 0,
+                                content: event.data?.content || '',
+                                timestamp: Date.now()
+                            });
+                            refreshNotifications();
+                        } else if (event.type === 'connected') {
+                            console.log('SSE connected:', event.timestamp);
+                        }
+                    },
+                    (error) => {
+                        console.error('SSE error, will attempt reconnect:', error);
+                        // Attempt to reconnect after 5 seconds
+                        setTimeout(setupSSE, 5000);
+                    }
+                );
+                sseCleanupRef.current = cleanup;
+            };
+
+            setupSSE();
+            if (Platform.OS !== 'ios') {
+                registerForPushNotifications();
+            }
+
+            // App state handling for reconnection
             const handleAppStateChange = (nextAppState: AppStateStatus) => {
                 if (nextAppState === 'active') {
-                    console.log('App active, refreshing notifications and checking for new messages...');
+                    console.log('App active, reconnecting SSE...');
+                    // Reconnect SSE when app becomes active
+                    if (sseCleanupRef.current) {
+                        sseCleanupRef.current();
+                    }
+                    setupSSE();
                     refreshNotifications();
+                    // Force a global refresh of components
                     setLastNotificationTime(new Date());
+                } else if (nextAppState === 'background') {
+                    // Close SSE when app goes to background to save resources
+                    if (sseCleanupRef.current) {
+                        sseCleanupRef.current();
+                        sseCleanupRef.current = null;
+                    }
                 }
             };
             const appStateSubscription = AppState.addEventListener('change', handleAppStateChange);
 
+            // Push notification listeners (for when FCM delivers)
             const subscription = Notifications.addNotificationReceivedListener(_notification => {
                 refreshNotifications();
                 setLastNotificationTime(new Date());
             });
-            const backgroundSubscription = Notifications.addNotificationResponseReceivedListener(response => {
+            const backgroundSubscription = Notifications.addNotificationResponseReceivedListener(async (response) => {
                 refreshNotifications();
                 setLastNotificationTime(new Date());
+                handleNotificationResponse(response);
             });
 
-            // Polling fallback for iOS (since free developer account doesn't support APNs)
-            // Note: Increased from 5s to 30s to reduce battery drain and server load
-            let pollingInterval: any = null;
-            if (Platform.OS === 'ios') {
-                pollingInterval = setInterval(() => {
-                    // console.log('Polling for new messages (iOS fallback)...');
-                    refreshNotifications();
-                    // Update timestamp to trigger useEffect in chat screens
-                    setLastNotificationTime(new Date());
-                }, 30000); // 30 seconds - balanced between responsiveness and efficiency
-            }
+            // Check for initial notification (Cold Start)
+            Notifications.getLastNotificationResponseAsync().then(response => {
+                if (response) {
+                    console.log('App launched from notification (Cold Start):', response);
+                    handleNotificationResponse(response);
+                }
+            });
+
+
 
             return () => {
                 appStateSubscription.remove();
                 subscription.remove();
                 backgroundSubscription.remove();
-                if (pollingInterval) clearInterval(pollingInterval);
+                if (sseCleanupRef.current) {
+                    sseCleanupRef.current();
+                    sseCleanupRef.current = null;
+                }
+                closeNotificationStream();
             };
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [session]); // refreshNotifications is stable - no need to add to deps
+    }, [session, refreshNotifications]);
 
     return (
         <NotificationContext.Provider value={{
@@ -127,7 +247,10 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
             unreadDirectMessages,
             friendRequests,
             lastNotificationTime,
-            refreshNotifications
+            lastMessage,
+            lastDM,
+            refreshNotifications,
+            setRouteSegments
         }}>
             {children}
         </NotificationContext.Provider>

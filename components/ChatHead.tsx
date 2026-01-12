@@ -45,14 +45,14 @@ export default function ChatHead() {
                     pan.setValue({ x: 0, y: 0 });
                     pan.setOffset({ x: width - 80, y: height - 150 });
                 }
-            } catch (e) {
+            } catch {
                 pan.setValue({ x: 0, y: 0 });
                 pan.setOffset({ x: width - 80, y: height - 150 });
             }
             setIsLoaded(true);
         };
         loadState();
-    }, []);
+    }, [pan]);
 
     const panResponder = useRef(
         PanResponder.create({
@@ -105,12 +105,12 @@ export default function ChatHead() {
 
                 if (!isDragging.current) {
                     const context = getContext();
-                    router.push(`/chat?context=${context}`);
+                    router.push(`/chat?context=${context}` as any);
                 }
 
                 try {
                     await AsyncStorage.setItem('chat_head_pos', JSON.stringify({ x: finalX, y: finalY }));
-                } catch (e) {
+                } catch {
                     console.log('Failed to save chat head pos');
                 }
                 isDragging.current = false;

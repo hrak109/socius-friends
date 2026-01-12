@@ -2,7 +2,7 @@
  * Reusable Card component with consistent styling from design system.
  */
 import React from 'react';
-import { View, StyleSheet, ViewStyle, Pressable } from 'react-native';
+import { View, ViewStyle, Pressable } from 'react-native';
 import { SPACING, RADIUS, SHADOWS } from '../../constants/design';
 import { useTheme } from '../../context/ThemeContext';
 
