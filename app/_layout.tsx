@@ -2,8 +2,9 @@ import { Stack, useRouter, useSegments } from 'expo-router';
 import { useEffect } from 'react';
 import 'dayjs/locale/ko'; /* Import Korean locale for dayjs */
 import { StatusBar } from 'expo-status-bar';
-import { TouchableOpacity, Image, View } from 'react-native';
+import { TouchableOpacity, Image, View, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import * as NavigationBar from 'expo-navigation-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { ThemeProvider, useTheme, darkColors } from '../context/ThemeContext';
 import { AuthProvider, useSession } from '../context/AuthContext';
@@ -70,6 +71,14 @@ function RootLayoutNav() {
     useEffect(() => {
         setRouteSegments(segments);
     }, [segments, setRouteSegments]);
+
+    // Configure Android navigation bar based on theme
+    useEffect(() => {
+        if (Platform.OS === 'android') {
+            NavigationBar.setBackgroundColorAsync(colors.background);
+            NavigationBar.setButtonStyleAsync(colors === darkColors ? 'light' : 'dark');
+        }
+    }, [colors]);
 
     useEffect(() => {
         if (isAuthLoading) return;

@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { useColorScheme, Platform } from 'react-native';
+import { useColorScheme } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as NavigationBar from 'expo-navigation-bar';
 
 type Theme = 'light' | 'dark';
 
@@ -143,13 +142,6 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         primary: accentColor,
         tabBarActive: accentColor,
     };
-
-    useEffect(() => {
-        if (Platform.OS === 'android') {
-            NavigationBar.setBackgroundColorAsync(colors.background);
-            NavigationBar.setButtonStyleAsync(theme === 'dark' ? 'light' : 'dark');
-        }
-    }, [colors.background, theme]);
 
     return (
         <ThemeContext.Provider value={{
