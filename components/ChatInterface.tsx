@@ -214,7 +214,7 @@ export default function ChatInterface({ onClose, isModal = false, initialMessage
             responseTimeoutRef.current = setTimeout(() => {
                 setIsTyping(false);
                 setTyping(currentThreadId, false);
-            }, 60000);
+            }, 120000);
 
             try {
                 await api.post('/ask', {
