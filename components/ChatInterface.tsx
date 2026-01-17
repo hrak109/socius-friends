@@ -1,9 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Image, KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Image, KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Avatar, Bubble, GiftedChat, IMessage, User } from 'react-native-gifted-chat';
+import * as Clipboard from 'expo-clipboard';
+import * as Haptics from 'expo-haptics';
+import TypingIndicator from './TypingIndicator';
 import { PROFILE_AVATAR_MAP, SOCIUS_AVATAR_MAP } from '../constants/avatars';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -56,9 +59,17 @@ export default function ChatInterface({ onClose, isModal = false, initialMessage
     const [isWaitingForResponse, setIsWaitingForResponse] = useState(false); // NEW: Disable input state
     const responseTimeoutRef = useRef<any>(null);
     const selectedModel = 'soc-model';
-    const { refreshNotifications, lastMessage, lastNotificationTime } = useNotifications();
+    const { refreshNotifications, lastMessage, lastNotificationTime, setTyping, typingThreads } = useNotifications();
     const textInputRef = useRef<any>(null);
     const processedMessageIds = useRef<Set<number>>(new Set());
+
+    // Sync waiting state with global typing state for this context
+    const threadId = companionId ? `socius-${companionId}` : context;
+    const isGlobalTyping = typingThreads.has(threadId) || typingThreads.has(context);
+
+    useEffect(() => {
+        setIsWaitingForResponse(isGlobalTyping);
+    }, [isGlobalTyping]);
 
     // Listen for real-time messages from SSE via NotificationContext
     useEffect(() => {
@@ -193,13 +204,16 @@ export default function ChatInterface({ onClose, isModal = false, initialMessage
         } else {
             // Socius AI chat: POST to /ask
             setIsTyping(true);
-            setIsWaitingForResponse(true);
+            // setIsWaitingForResponse(true) handled by effect on isGlobalTyping
+
+            const currentThreadId = companionId ? `socius-${companionId}` : context;
+            setTyping(currentThreadId, true);
 
             // Set 60s timeout to re-enable
             if (responseTimeoutRef.current) clearTimeout(responseTimeoutRef.current);
             responseTimeoutRef.current = setTimeout(() => {
-                setIsWaitingForResponse(false);
                 setIsTyping(false);
+                setTyping(currentThreadId, false);
             }, 60000);
 
             try {
@@ -212,7 +226,7 @@ export default function ChatInterface({ onClose, isModal = false, initialMessage
             } catch (error) {
                 console.error('Error sending question:', error);
                 setIsTyping(false);
-                setIsWaitingForResponse(false);
+                setTyping(currentThreadId, false);
                 if (responseTimeoutRef.current) clearTimeout(responseTimeoutRef.current);
                 appendBotMessage('Sorry, I encountered an error sending your message.');
             }
@@ -230,8 +244,11 @@ export default function ChatInterface({ onClose, isModal = false, initialMessage
     useEffect(() => {
         if (messages.length > 0 && messages[0].user._id !== 1) {
             setIsTyping(false);
-            setIsWaitingForResponse(false); // Re-enable when bot answers
+            // setIsWaitingForResponse handled by global state
             if (responseTimeoutRef.current) clearTimeout(responseTimeoutRef.current);
+
+            const currentThreadId = companionId ? `socius-${companionId}` : context;
+            setTyping(currentThreadId, false);
         }
     }, [messages]);
 
@@ -390,6 +407,35 @@ export default function ChatInterface({ onClose, isModal = false, initialMessage
                     renderBubble={renderBubble}
                     renderAvatar={renderAvatar}
                     renderInputToolbar={renderInputToolbar}
+                    renderFooter={() => {
+                        if (!isTyping) return null;
+
+                        let source;
+                        if (friendAvatar && PROFILE_AVATAR_MAP[friendAvatar]) {
+                            source = PROFILE_AVATAR_MAP[friendAvatar];
+                        } else if (friendAvatar && SOCIUS_AVATAR_MAP[friendAvatar]) {
+                            source = SOCIUS_AVATAR_MAP[friendAvatar];
+                        } else if (friendAvatar && friendAvatar.startsWith('http')) {
+                            source = { uri: friendAvatar };
+                        } else {
+                            source = SOCIUS_AVATAR_MAP['socius-avatar-0'];
+                        }
+
+                        return (
+                            <View style={{ flexDirection: 'row', alignItems: 'flex-end', margin: 10, marginLeft: 14 }}>
+                                <SociusAvatar source={source} />
+                                <View style={{
+                                    backgroundColor: colors.inputBackground,
+                                    marginLeft: 8,
+                                    padding: 10,
+                                    borderRadius: 15,
+                                    borderBottomLeftRadius: 0
+                                }}>
+                                    <TypingIndicator color={colors.textSecondary} />
+                                </View>
+                            </View>
+                        );
+                    }}
                     placeholder={t('chat.placeholder')}
                     showUserAvatar={true}
                     alwaysShowSend
@@ -401,6 +447,13 @@ export default function ChatInterface({ onClose, isModal = false, initialMessage
                     }}
                     keyboardShouldPersistTaps="handled"
                     bottomOffset={Platform.OS === 'ios' ? 34 : 0}
+                    onLongPress={(context, message) => {
+                        if (message.text) {
+                            Clipboard.setStringAsync(message.text);
+                            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                            Alert.alert(t('common.success') || 'Success', t('chat.copy_success') || 'Text copied to clipboard');
+                        }
+                    }}
                 />
             </SafeAreaView>
         </KeyboardAvoidingView>

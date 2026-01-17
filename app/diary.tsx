@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, FlatList, TextInput, ActivityIndicator, Modal } from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity, FlatList, TextInput, ActivityIndicator, Modal, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack } from 'expo-router';
 import { useTheme } from '../context/ThemeContext';
@@ -16,15 +16,18 @@ type DiaryEntry = {
 };
 
 export default function DiaryScreen() {
-    const { colors } = useTheme();
+    const { colors, isDark } = useTheme();
     const { t, language } = useLanguage();
     const [entries, setEntries] = useState<DiaryEntry[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+
+    // Edit States
     const [editingId, setEditingId] = useState<string | null>(null);
     const [editContent, setEditContent] = useState('');
+    const [editTitle, setEditTitle] = useState('');
     const [isSavingEdit, setIsSavingEdit] = useState(false);
 
-    // New states for modal and new entry
+    // Modal States
     const [modalVisible, setModalVisible] = useState(false);
     const [newTitle, setNewTitle] = useState('');
     const [newContent, setNewContent] = useState('');
@@ -80,21 +83,27 @@ export default function DiaryScreen() {
     const startEditing = (entry: DiaryEntry) => {
         setEditingId(entry.id);
         setEditContent(entry.content);
+        setEditTitle(entry.title || '');
     };
 
     const cancelEditing = () => {
         setEditingId(null);
         setEditContent('');
+        setEditTitle('');
     };
 
     const saveEdit = async (id: string) => {
         if (editContent.trim() === '') return;
         setIsSavingEdit(true);
         try {
-            const res = await api.put(`/diary/${id}`, { content: editContent });
+            const res = await api.put(`/diary/${id}`, {
+                content: editContent,
+                title: editTitle.trim() === '' ? undefined : editTitle
+            });
             setEntries(entries.map(e => e.id === id ? res.data : e));
             setEditingId(null);
             setEditContent('');
+            setEditTitle('');
         } catch (error) {
             console.error('Failed to update diary entry:', error);
         } finally {
@@ -102,72 +111,84 @@ export default function DiaryScreen() {
         }
     };
 
-    const renderEntry = ({ item }: { item: DiaryEntry }) => {
+    const renderTimelineItem = ({ item, index }: { item: DiaryEntry; index: number }) => {
         const isEditing = editingId === item.id;
         const isExpanded = expandedIds.has(item.id);
+        const dateObj = new Date(item.date);
+        const day = dateObj.toLocaleDateString('en-US', { day: 'numeric' });
+        const month = dateObj.toLocaleDateString(language === 'ko' ? 'ko-KR' : 'en-US', { month: 'short' });
+        const year = dateObj.getFullYear();
+        const isLastItem = index === entries.length - 1;
 
         return (
-            <View style={[styles.entryCard, { backgroundColor: colors.card, shadowColor: '#000' }]}>
-                {isEditing ? (
-                    <View>
-                        <TextInput
-                            style={[styles.editInput, { color: colors.text, backgroundColor: colors.inputBackground, borderColor: colors.border }]}
-                            multiline
-                            value={editContent}
-                            onChangeText={setEditContent}
-                            autoFocus
-                        />
-                        <View style={styles.editActions}>
-                            <TouchableOpacity
-                                style={[styles.editBtn, styles.cancelEditBtn, { backgroundColor: colors.inputBackground }]}
-                                onPress={cancelEditing}
-                                disabled={isSavingEdit}
-                            >
-                                <Text style={[styles.editBtnText, { color: colors.textSecondary }]}>{t('diary.cancel')}</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                                style={[styles.editBtn, styles.saveEditBtn, { backgroundColor: colors.primary }]}
-                                onPress={() => saveEdit(item.id)}
-                                disabled={isSavingEdit}
-                            >
-                                {isSavingEdit ? (
-                                    <ActivityIndicator size="small" color="#fff" />
-                                ) : (
-                                    <Text style={styles.editBtnText}>{t('diary.save')}</Text>
-                                )}
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-                ) : (
-                    <TouchableOpacity activeOpacity={0.8} onPress={() => toggleExpand(item.id)} style={{ flexDirection: 'row' }}>
-                        <View style={[styles.dateBadge, { backgroundColor: colors.primary }]}>
-                            <Text style={[styles.dateDay, { color: '#fff' }]}>
-                                {new Date(item.date).toLocaleDateString(language === 'ko' ? 'ko-KR' : 'en-US', { day: 'numeric' })}
-                            </Text>
-                            <Text style={[styles.dateMonth, { color: 'rgba(255,255,255,0.9)' }]}>
-                                {new Date(item.date).toLocaleDateString(language === 'ko' ? 'ko-KR' : 'en-US', { month: 'short' })}
-                            </Text>
-                        </View>
-                        <View style={{ flex: 1 }}>
-                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
-                                {item.title ? (
-                                    <Text style={[styles.entryTitle, { color: colors.text, flex: 1, marginRight: 8 }]} numberOfLines={1}>{item.title}</Text>
-                                ) : (
-                                    <View style={{ flex: 1 }} />
-                                )}
-                                <TouchableOpacity onPress={() => startEditing(item)} style={styles.editIcon}>
-                                    <Ionicons name="ellipsis-horizontal" size={20} color={colors.textSecondary} />
-                                </TouchableOpacity>
+            <View style={styles.timelineRow}>
+                {/* Date Column */}
+                <View style={styles.dateColumn}>
+                    <Text style={[styles.dayText, { color: colors.text }]}>{day}</Text>
+                    <Text style={[styles.monthText, { color: colors.textSecondary }]}>{month}</Text>
+                    {new Date().getFullYear() !== year && (
+                        <Text style={[styles.yearText, { color: colors.textSecondary }]}>{year}</Text>
+                    )}
+                </View>
+
+                {/* Timeline Connector */}
+                <View style={styles.timelineConnector}>
+                    <View style={[styles.timelineDot, { backgroundColor: colors.primary }]} />
+                    {!isLastItem && <View style={[styles.timelineLine, { backgroundColor: colors.border }]} />}
+                </View>
+
+                {/* Content Card */}
+                <View style={styles.contentColumn}>
+                    <View style={[styles.card, { backgroundColor: colors.card, shadowColor: isDark ? '#000' : '#888' }]}>
+                        {isEditing ? (
+                            <View>
+                                <TextInput
+                                    style={[styles.editInput, { color: colors.text, backgroundColor: colors.inputBackground, fontWeight: '700', marginBottom: 8, minHeight: 40 }]}
+                                    placeholder={t('diary.title_placeholder')}
+                                    placeholderTextColor={colors.textSecondary}
+                                    value={editTitle}
+                                    onChangeText={setEditTitle}
+                                />
+                                <TextInput
+                                    style={[styles.editInput, { color: colors.text, backgroundColor: colors.inputBackground }]}
+                                    multiline
+                                    value={editContent}
+                                    onChangeText={setEditContent}
+                                    autoFocus
+                                />
+                                <View style={styles.editActions}>
+                                    <TouchableOpacity onPress={cancelEditing} disabled={isSavingEdit}>
+                                        <Text style={[styles.editText, { color: colors.textSecondary }]}>{t('common.cancel')}</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity onPress={() => saveEdit(item.id)} disabled={isSavingEdit}>
+                                        <Text style={[styles.editText, { color: colors.primary, fontWeight: 'bold' }]}>{t('common.save')}</Text>
+                                    </TouchableOpacity>
+                                </View>
                             </View>
-                            <Text style={[styles.entryPreview, { color: colors.textSecondary }]} numberOfLines={isExpanded ? undefined : 5}>
-                                {item.content}
-                            </Text>
-                            <Text style={[styles.entryTime, { color: colors.textSecondary }]}>
-                                {new Date(item.date).toLocaleTimeString(language === 'ko' ? 'ko-KR' : 'en-US', { hour: 'numeric', minute: '2-digit' })}
-                            </Text>
-                        </View>
-                    </TouchableOpacity>
-                )}
+                        ) : (
+                            <TouchableOpacity activeOpacity={0.8} onPress={() => toggleExpand(item.id)}>
+                                <View style={styles.cardHeader}>
+                                    {item.title ? (
+                                        <Text style={[styles.cardTitle, { color: colors.text }]} numberOfLines={1}>
+                                            {item.title}
+                                        </Text>
+                                    ) : (
+                                        <View style={{ flex: 1 }} />
+                                    )}
+                                    <TouchableOpacity onPress={() => startEditing(item)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                                        <Ionicons name="create-outline" size={18} color={colors.textSecondary} />
+                                    </TouchableOpacity>
+                                </View>
+                                <Text style={[styles.cardContent, { color: colors.textSecondary }]} numberOfLines={isExpanded ? undefined : 4}>
+                                    {item.content}
+                                </Text>
+                                <Text style={[styles.cardTime, { color: colors.textSecondary }]}>
+                                    {dateObj.toLocaleTimeString(language === 'ko' ? 'ko-KR' : 'en-US', { hour: '2-digit', minute: '2-digit' })}
+                                </Text>
+                            </TouchableOpacity>
+                        )}
+                    </View>
+                </View>
             </View>
         );
     };
@@ -177,75 +198,71 @@ export default function DiaryScreen() {
             <Stack.Screen options={{ title: t('diary.title'), headerBackTitle: t('common.back') }} />
 
             {isLoading ? (
-                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                <View style={styles.center}>
                     <ActivityIndicator size="large" color={colors.primary} />
                 </View>
             ) : (
-                <View style={styles.content}>
-                    <FlatList
-                        data={entries}
-                        keyExtractor={item => item.id.toString()}
-                        renderItem={renderEntry}
-                        contentContainerStyle={styles.listContent}
-                        showsVerticalScrollIndicator={false}
-                        ListEmptyComponent={
-                            <View style={styles.emptyState}>
-                                <Ionicons name="book-outline" size={60} color={colors.textSecondary} />
-                                <Text style={[styles.emptyStateText, { color: colors.textSecondary }]}>{t('diary.no_entries')}</Text>
-                            </View>
-                        }
-                    />
-                </View>
+                <FlatList
+                    data={entries}
+                    keyExtractor={(item) => item.id}
+                    renderItem={renderTimelineItem}
+                    contentContainerStyle={styles.listContent}
+                    showsVerticalScrollIndicator={false}
+                    ListEmptyComponent={
+                        <View style={styles.emptyState}>
+                            <Ionicons name="book-outline" size={64} color={colors.textSecondary} style={{ opacity: 0.5 }} />
+                            <Text style={[styles.emptyText, { color: colors.textSecondary }]}>{t('diary.no_entries')}</Text>
+                        </View>
+                    }
+                />
             )}
 
             <TouchableOpacity
-                style={[styles.fab, { backgroundColor: colors.primary }]}
+                style={[styles.fab, { backgroundColor: colors.primary, shadowColor: colors.primary }]}
                 onPress={() => setModalVisible(true)}
             >
-                <Ionicons name="add" size={30} color="#fff" />
+                <Ionicons name="pencil" size={26} color="#fff" />
             </TouchableOpacity>
 
+            {/* Modal - Same minimal style as Notes */}
             <Modal
                 animationType="slide"
-                transparent={true}
+                presentationStyle="pageSheet"
                 visible={modalVisible}
                 onRequestClose={() => setModalVisible(false)}
             >
-                <View style={styles.modalContainer}>
-                    <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
-                        <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
-                            <Text style={[styles.modalTitle, { color: colors.text }]}>{t('diary.new_entry')}</Text>
+                <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, backgroundColor: colors.background }}>
+                    <SafeAreaView style={{ flex: 1 }}>
+                        <View style={styles.modalHeaderBar}>
                             <TouchableOpacity onPress={() => setModalVisible(false)}>
-                                <Ionicons name="close" size={24} color={colors.text} />
+                                <Text style={[styles.modalCancel, { color: colors.textSecondary }]}>{t('common.cancel')}</Text>
+                            </TouchableOpacity>
+                            <Text style={[styles.modalTitleText, { color: colors.text }]}>{t('diary.new_entry')}</Text>
+                            <TouchableOpacity onPress={handleSaveEntry}>
+                                <Text style={[styles.modalSave, { color: colors.primary }]}>{t('common.save')}</Text>
                             </TouchableOpacity>
                         </View>
 
-                        <TextInput
-                            style={[styles.inputTitle, { color: colors.text, backgroundColor: colors.inputBackground, borderColor: colors.border }]}
-                            placeholder={t('diary.title_placeholder')}
-                            placeholderTextColor={colors.textSecondary}
-                            value={newTitle}
-                            onChangeText={setNewTitle}
-                        />
-
-                        <TextInput
-                            style={[styles.inputContent, { color: colors.text, backgroundColor: colors.inputBackground, borderColor: colors.border }]}
-                            placeholder={t('diary.content_placeholder')}
-                            placeholderTextColor={colors.textSecondary}
-                            multiline
-                            textAlignVertical="top"
-                            value={newContent}
-                            onChangeText={setNewContent}
-                        />
-
-                        <TouchableOpacity
-                            style={[styles.saveButton, { backgroundColor: colors.primary }]}
-                            onPress={handleSaveEntry}
-                        >
-                            <Text style={styles.saveButtonText}>{t('diary.save_entry')}</Text>
-                        </TouchableOpacity>
-                    </View>
-                </View>
+                        <ScrollView style={styles.modalBody}>
+                            <TextInput
+                                style={[styles.modalInputTitle, { color: colors.text, borderBottomColor: colors.border }]}
+                                placeholder={t('diary.title_placeholder')}
+                                placeholderTextColor={colors.textSecondary}
+                                value={newTitle}
+                                onChangeText={setNewTitle}
+                            />
+                            <TextInput
+                                style={[styles.modalInputContent, { color: colors.text }]}
+                                placeholder={t('diary.content_placeholder')}
+                                placeholderTextColor={colors.textSecondary}
+                                multiline
+                                textAlignVertical="top"
+                                value={newContent}
+                                onChangeText={setNewContent}
+                            />
+                        </ScrollView>
+                    </SafeAreaView>
+                </KeyboardAvoidingView>
             </Modal>
         </SafeAreaView>
     );
@@ -255,161 +272,152 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
     },
-    content: {
+    center: {
         flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     listContent: {
-        padding: 20,
+        paddingVertical: 20,
+        paddingHorizontal: 16,
         paddingBottom: 100,
     },
-    entryCard: {
-        borderRadius: 20,
-        padding: 20,
-        marginBottom: 15,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.08,
-        shadowRadius: 12,
-        elevation: 4,
-        borderWidth: 1,
-        borderColor: 'rgba(0,0,0,0.05)',
+    timelineRow: {
+        flexDirection: 'row',
+        marginBottom: 4,
     },
-    dateBadge: {
+    dateColumn: {
+        width: 60,
         alignItems: 'center',
-        justifyContent: 'center',
-        padding: 4,
-        borderRadius: 8,
-        minWidth: 40,
-        marginRight: 12,
-        height: 45,
+        paddingTop: 0,
     },
-    dateDay: {
-        fontSize: 16,
+    dayText: {
+        fontSize: 24,
         fontWeight: 'bold',
-        lineHeight: 18,
     },
-    dateMonth: {
-        fontSize: 10,
+    monthText: {
+        fontSize: 12,
         fontWeight: '600',
         textTransform: 'uppercase',
     },
-    entryTitle: {
-        fontSize: 18,
-        fontWeight: '700',
-        marginBottom: 5,
+    yearText: {
+        fontSize: 10,
+        marginTop: 2,
     },
-    entryPreview: {
-        fontSize: 16,
-        lineHeight: 24,
+    timelineConnector: {
+        width: 20,
+        alignItems: 'center',
+        marginRight: 10,
+    },
+    timelineDot: {
+        width: 12,
+        height: 12,
+        borderRadius: 6,
+        marginTop: 8,
+        zIndex: 1,
+    },
+    timelineLine: {
+        width: 2,
+        flex: 1,
+        marginTop: -4, // Overlap slightly
+        marginBottom: -20, // Extend to next item
+    },
+    contentColumn: {
+        flex: 1,
+        paddingBottom: 20,
+    },
+    card: {
+        borderRadius: 16,
+        padding: 16,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
+        elevation: 2,
+    },
+    cardHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
         marginBottom: 8,
     },
-    entryTime: {
-        fontSize: 12,
-        marginTop: 5,
-    },
-    editIcon: {
-        padding: 5,
-    },
-    editInput: {
-        borderWidth: 1,
-        borderRadius: 12,
-        padding: 15,
+    cardTitle: {
         fontSize: 16,
-        minHeight: 100,
-        marginBottom: 15,
-        textAlignVertical: 'top',
+        fontWeight: '700',
+        flex: 1,
+        marginRight: 8,
     },
-    editActions: {
-        flexDirection: 'row',
-        justifyContent: 'flex-end',
-        gap: 10,
+    cardContent: {
+        fontSize: 15,
+        lineHeight: 22,
+        marginBottom: 8,
     },
-    editBtn: {
-        paddingVertical: 8,
-        paddingHorizontal: 16,
-        borderRadius: 20,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    saveEditBtn: {},
-    cancelEditBtn: {},
-    editBtnText: {
-        fontWeight: '600',
-        fontSize: 14,
-        color: '#fff',
+    cardTime: {
+        fontSize: 12,
+        opacity: 0.6,
     },
     emptyState: {
         alignItems: 'center',
         justifyContent: 'center',
-        paddingTop: 100,
-        opacity: 0.7,
+        marginTop: 100,
     },
-    emptyStateText: {
-        marginTop: 15,
+    emptyText: {
+        marginTop: 16,
         fontSize: 16,
         fontWeight: '500',
     },
     fab: {
         position: 'absolute',
         bottom: 30,
-        right: 20,
-        width: 60,
-        height: 60,
-        borderRadius: 30,
+        right: 24,
+        width: 56,
+        height: 56,
+        borderRadius: 28,
         justifyContent: 'center',
         alignItems: 'center',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 8 },
+        shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.3,
-        shadowRadius: 12,
-        elevation: 8,
+        shadowRadius: 8,
+        elevation: 6,
     },
-    modalContainer: {
-        flex: 1,
-        justifyContent: 'flex-end',
-        backgroundColor: 'rgba(0,0,0,0.5)',
-    },
-    modalContent: {
-        borderTopLeftRadius: 20,
-        borderTopRightRadius: 20,
-        padding: 20,
-        minHeight: '80%',
-    },
-    modalHeader: {
+    modalHeaderBar: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: 20,
-        borderBottomWidth: 1,
-        paddingBottom: 15,
+        paddingHorizontal: 20,
+        paddingVertical: 16,
+        borderBottomWidth: StyleSheet.hairlineWidth,
+        borderBottomColor: 'rgba(0,0,0,0.1)',
     },
-    modalTitle: {
+    modalCancel: { fontSize: 17 },
+    modalSave: { fontSize: 17, fontWeight: '600' },
+    modalTitleText: { fontSize: 17, fontWeight: '600' },
+    modalBody: { flex: 1, padding: 24 },
+    modalInputTitle: {
         fontSize: 20,
-        fontWeight: 'bold',
+        fontWeight: '700',
+        marginBottom: 16,
+        paddingBottom: 8,
+        borderBottomWidth: 1,
     },
-    inputTitle: {
-        fontSize: 18,
-        fontWeight: '600',
-        padding: 15,
-        borderRadius: 12,
-        marginBottom: 15,
-        borderWidth: 1,
-    },
-    inputContent: {
-        fontSize: 16,
-        padding: 15,
-        borderRadius: 12,
-        borderWidth: 1,
+    modalInputContent: {
+        fontSize: 17,
+        lineHeight: 24,
         minHeight: 200,
-        marginBottom: 20,
     },
-    saveButton: {
-        paddingVertical: 15,
-        borderRadius: 12,
-        alignItems: 'center',
+    editInput: {
+        fontSize: 15,
+        lineHeight: 22,
+        minHeight: 80,
+        marginBottom: 10,
+        borderRadius: 8,
+        padding: 8,
     },
-    saveButtonText: {
-        color: '#fff',
-        fontSize: 16,
-        fontWeight: 'bold',
+    editActions: {
+        flexDirection: 'row',
+        justifyContent: 'flex-end',
+        gap: 16,
+    },
+    editText: {
+        fontSize: 14,
     },
 });

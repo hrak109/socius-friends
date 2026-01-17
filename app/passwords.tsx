@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, SectionList, Modal, TextInput, Alert, ActivityIndicator, Keyboard, TouchableWithoutFeedback, ScrollView } from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity, SectionList, Modal, TextInput, Alert, ActivityIndicator, Keyboard, TouchableWithoutFeedback, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { Stack } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -295,79 +295,84 @@ export default function PasswordsScreen() {
                 visible={modalVisible}
                 onRequestClose={closeModal}
             >
-                <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-                    <View style={styles.modalOverlay}>
-                        <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
-                            <View style={styles.modalHeader}>
-                                <Text style={[styles.modalTitle, { color: colors.text }]}>
-                                    {editingId ? t('passwords.edit_account') : t('passwords.add_account')}
-                                </Text>
-                                <TouchableOpacity onPress={closeModal}>
-                                    <Ionicons name="close" size={24} color={colors.textSecondary} />
-                                </TouchableOpacity>
-                            </View>
-
-                            <ScrollView>
-                                <Text style={[styles.label, { color: colors.textSecondary }]}>{t('passwords.service_placeholder')}</Text>
-                                <TextInput
-                                    style={[styles.input, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#f5f5f5', color: colors.text, borderColor: colors.border }]}
-                                    value={service}
-                                    onChangeText={setService}
-                                    placeholder="Netflix"
-                                    placeholderTextColor={colors.textSecondary}
-                                />
-
-                                <Text style={[styles.label, { color: colors.textSecondary }]}>{t('passwords.username_placeholder')}</Text>
-                                <TextInput
-                                    style={[styles.input, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#f5f5f5', color: colors.text, borderColor: colors.border }]}
-                                    value={username}
-                                    onChangeText={setUsername}
-                                    autoCapitalize="none"
-                                    placeholder="user@example.com"
-                                    placeholderTextColor={colors.textSecondary}
-                                />
-
-                                <Text style={[styles.label, { color: colors.textSecondary }]}>{t('passwords.password_placeholder')}</Text>
-                                <TextInput
-                                    style={[styles.input, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#f5f5f5', color: colors.text, borderColor: colors.border }]}
-                                    value={password}
-                                    onChangeText={setPassword}
-                                    secureTextEntry={false} // Maybe explicit toggle in real app? For now plain text in edit mode is easier
-                                    placeholder="********"
-                                    placeholderTextColor={colors.textSecondary}
-                                />
-
-                                <Text style={[styles.label, { color: colors.textSecondary }]}>{t('passwords.group_label')}</Text>
-                                <View style={styles.groupContainer}>
-                                    {GROUPS.map(g => (
-                                        <TouchableOpacity
-                                            key={g}
-                                            style={[
-                                                styles.groupChip,
-                                                { backgroundColor: group === g ? colors.primary : (isDark ? '#333' : '#f0f0f0') }
-                                            ]}
-                                            onPress={() => setGroup(g)}
-                                        >
-                                            <Text style={[
-                                                styles.groupText,
-                                                { color: group === g ? '#fff' : colors.text }
-                                            ]}>
-                                                {t(`passwords.groups.${g}` as any) || g}
-                                            </Text>
-                                        </TouchableOpacity>
-                                    ))}
+                <KeyboardAvoidingView
+                    behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                    style={{ flex: 1 }}
+                >
+                    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+                        <View style={styles.modalOverlay}>
+                            <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
+                                <View style={styles.modalHeader}>
+                                    <Text style={[styles.modalTitle, { color: colors.text }]}>
+                                        {editingId ? t('passwords.edit_account') : t('passwords.add_account')}
+                                    </Text>
+                                    <TouchableOpacity onPress={closeModal}>
+                                        <Ionicons name="close" size={24} color={colors.textSecondary} />
+                                    </TouchableOpacity>
                                 </View>
-                            </ScrollView>
 
-                            <TouchableOpacity
-                                style={[styles.saveButton, { backgroundColor: colors.primary }]}
-                                onPress={handleSave}
-                            >
-                                <Text style={styles.saveButtonText}>{t('common.save')}</Text>
-                            </TouchableOpacity>
+                                <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+                                    <Text style={[styles.label, { color: colors.textSecondary }]}>{t('passwords.service_placeholder')}</Text>
+                                    <TextInput
+                                        style={[styles.input, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#f5f5f5', color: colors.text, borderColor: colors.border }]}
+                                        value={service}
+                                        onChangeText={setService}
+                                        placeholder="Netflix"
+                                        placeholderTextColor={colors.textSecondary}
+                                    />
+
+                                    <Text style={[styles.label, { color: colors.textSecondary }]}>{t('passwords.username_placeholder')}</Text>
+                                    <TextInput
+                                        style={[styles.input, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#f5f5f5', color: colors.text, borderColor: colors.border }]}
+                                        value={username}
+                                        onChangeText={setUsername}
+                                        autoCapitalize="none"
+                                        placeholder="user@example.com"
+                                        placeholderTextColor={colors.textSecondary}
+                                    />
+
+                                    <Text style={[styles.label, { color: colors.textSecondary }]}>{t('passwords.password_placeholder')}</Text>
+                                    <TextInput
+                                        style={[styles.input, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#f5f5f5', color: colors.text, borderColor: colors.border }]}
+                                        value={password}
+                                        onChangeText={setPassword}
+                                        secureTextEntry={false}
+                                        placeholder="********"
+                                        placeholderTextColor={colors.textSecondary}
+                                    />
+
+                                    <Text style={[styles.label, { color: colors.textSecondary }]}>{t('passwords.group_label')}</Text>
+                                    <View style={styles.groupContainer}>
+                                        {GROUPS.map(g => (
+                                            <TouchableOpacity
+                                                key={g}
+                                                style={[
+                                                    styles.groupChip,
+                                                    { backgroundColor: group === g ? colors.primary : (isDark ? '#333' : '#f0f0f0') }
+                                                ]}
+                                                onPress={() => setGroup(g)}
+                                            >
+                                                <Text style={[
+                                                    styles.groupText,
+                                                    { color: group === g ? '#fff' : colors.text }
+                                                ]}>
+                                                    {t(`passwords.groups.${g}` as any) || g}
+                                                </Text>
+                                            </TouchableOpacity>
+                                        ))}
+                                    </View>
+
+                                    <TouchableOpacity
+                                        style={[styles.saveButton, { backgroundColor: colors.primary }]}
+                                        onPress={handleSave}
+                                    >
+                                        <Text style={styles.saveButtonText}>{t('common.save')}</Text>
+                                    </TouchableOpacity>
+                                </ScrollView>
+                            </View>
                         </View>
-                    </View>
-                </TouchableWithoutFeedback>
+                    </TouchableWithoutFeedback>
+                </KeyboardAvoidingView>
             </Modal>
         </SafeAreaView>
     );
@@ -426,7 +431,7 @@ const styles = StyleSheet.create({
     },
     iconText: {
         fontSize: 20,
-        fontWeight: 'Bold',
+        fontWeight: 'bold',
     },
     itemContent: {
         flex: 1,
@@ -482,13 +487,12 @@ const styles = StyleSheet.create({
     modalOverlay: {
         flex: 1,
         backgroundColor: 'rgba(0,0,0,0.5)',
-        justifyContent: 'flex-end',
+        justifyContent: 'center',
+        paddingHorizontal: 16,
     },
     modalContent: {
-        borderTopLeftRadius: 24,
-        borderTopRightRadius: 24,
+        borderRadius: 24,
         padding: 24,
-        paddingBottom: 40,
         maxHeight: '90%',
     },
     modalHeader: {

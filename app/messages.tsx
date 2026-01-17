@@ -6,7 +6,8 @@ import {
     FlatList,
     TouchableOpacity,
     Image,
-    RefreshControl
+    RefreshControl,
+    Animated
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -19,18 +20,20 @@ import { SOCIUS_AVATAR_MAP, PROFILE_AVATAR_MAP } from '../constants/avatars';
 import api from '../services/api';
 import DraggableFlatList, { ScaleDecorator, RenderItemParams } from 'react-native-draggable-flatlist';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import TypingIndicator from '../components/TypingIndicator';
 
 const APPS_ORDER_KEY = 'user_apps_order_v1';
 
 const DEFAULT_APPS = [
     { id: 'socius', label: 'friends.socius_friend', icon: 'sparkles', color: '#007AFF', route: '/socius-friends' },
-    { id: 'friends', label: 'friends.title', icon: 'people', color: '#34C759', route: '/friends' },
-    { id: 'bible', label: 'bible.title', icon: 'book', color: '#8B4513', route: '/bible' },
-    { id: 'calories', label: 'calories.title', icon: 'nutrition', color: '#E0245E', route: '/calories' },
+    { id: 'friends', label: 'friends.title', icon: 'people', color: '#5AC8FA', route: '/friends' },
+    { id: 'bible', label: 'bible.title', icon: 'book', color: '#8D6E63', route: '/bible' },
+    { id: 'calories', label: 'calories.title', icon: 'nutrition', color: '#34C759', route: '/calories' },
     { id: 'passwords', label: 'passwords.title', icon: 'key', color: '#5856D6', route: '/passwords' },
     { id: 'notes', label: 'notes.title', icon: 'document-text', color: '#FF9500', route: '/notes' },
     { id: 'diary', label: 'diary.title', icon: 'journal', color: '#FF2D55', route: '/diary' },
     { id: 'workout', label: 'workout.title', icon: 'fitness', color: '#FF3B30', route: '/workout' },
+    { id: 'languages', label: 'languages.title', icon: 'globe', color: '#C7C7CC', route: '/languages' },
 ];
 
 interface ChatThread {
@@ -42,6 +45,7 @@ interface ChatThread {
     lastMessageTime?: string;
     unread?: number;
     sociusRole?: string;
+    multilingual_selection?: string;
 }
 
 export default function MessagesScreen() {
@@ -49,7 +53,7 @@ export default function MessagesScreen() {
     const { colors } = useTheme();
     const { t } = useLanguage();
     const { session } = useSession();
-    const { lastNotificationTime } = useNotifications();
+    const { lastNotificationTime, typingThreads } = useNotifications();
     const [threads, setThreads] = useState<ChatThread[]>([]);
     const [refreshing, setRefreshing] = useState(false);
     const [apps, setApps] = useState(DEFAULT_APPS);
@@ -142,6 +146,7 @@ export default function MessagesScreen() {
                         lastMessage: comp.last_message,
                         lastMessageTime: comp.last_message_time,
                         sociusRole: comp.role,
+                        multilingual_selection: comp.multilingual_selection,
                         unread: comp.unread_count || 0
                     }));
 
@@ -200,8 +205,46 @@ export default function MessagesScreen() {
         });
     };
 
+    // NEW: Pulse animation for typing
+    const PulseAvatar = ({ children, isTyping }: { children: React.ReactNode, isTyping: boolean }) => {
+        const opacity = React.useRef(new Animated.Value(1)).current;
+
+        useEffect(() => {
+            let animation: Animated.CompositeAnimation | null = null;
+            if (isTyping) {
+                animation = Animated.loop(
+                    Animated.sequence([
+                        Animated.timing(opacity, {
+                            toValue: 0.4,
+                            duration: 800,
+                            useNativeDriver: true,
+                        }),
+                        Animated.timing(opacity, {
+                            toValue: 1,
+                            duration: 800,
+                            useNativeDriver: true,
+                        }),
+                    ])
+                );
+                animation.start();
+            } else {
+                opacity.setValue(1);
+            }
+            return () => {
+                if (animation) animation.stop();
+            };
+        }, [isTyping, opacity]);
+
+        return (
+            <Animated.View style={{ opacity }}>
+                {children}
+            </Animated.View>
+        );
+    };
+
     const renderThread = ({ item }: { item: ChatThread }) => {
         let avatarSource = null;
+        const isTyping = typingThreads.has(item.id);
 
         if (item.type === 'socius') {
             // Socius: use SOCIUS_AVATAR_MAP
@@ -220,55 +263,105 @@ export default function MessagesScreen() {
                 style={[styles.threadItem, { borderBottomColor: colors.border }]}
                 onPress={() => handleThreadPress(item)}
             >
-                <View style={[
-                    styles.avatarContainer,
-                    {
-                        backgroundColor: item.type === 'socius' ? '#fff' : colors.primary,
-                        borderWidth: item.type === 'socius' ? 1 : 0,
-                        borderColor: colors.border
-                    }
-                ]}>
-                    {avatarSource ? (
-                        <Image source={avatarSource} style={styles.avatar} />
-                    ) : (
-                        <Ionicons
-                            name={item.type === 'socius' ? 'sparkles' : 'person'}
-                            size={24}
-                            color={item.type === 'socius' ? colors.primary : "#fff"}
-                        />
-                    )}
-                </View>
+                <PulseAvatar isTyping={isTyping}>
+                    <View style={[
+                        styles.avatarContainer,
+                        {
+                            backgroundColor: item.type === 'socius' ? '#fff' : colors.primary,
+                            borderWidth: item.type === 'socius' ? 1 : 0,
+                            borderColor: colors.border
+                        }
+                    ]}>
+                        {avatarSource ? (
+                            <Image source={avatarSource} style={styles.avatar} />
+                        ) : (
+                            <Ionicons
+                                name={item.type === 'socius' ? 'sparkles' : 'person'}
+                                size={24}
+                                color={item.type === 'socius' ? colors.primary : "#fff"}
+                            />
+                        )}
+                        {isTyping && (
+                            <View style={{
+                                position: 'absolute',
+                                right: -8,
+                                bottom: -4,
+                                backgroundColor: colors.card,
+                                borderRadius: 10,
+                                borderWidth: 1,
+                                borderColor: colors.border,
+                                padding: 2,
+                                elevation: 2,
+                                shadowColor: '#000',
+                                shadowOffset: { width: 0, height: 1 },
+                                shadowOpacity: 0.2,
+                                shadowRadius: 1,
+                            }}>
+                                <TypingIndicator color={colors.primary} />
+                            </View>
+                        )}
+                    </View>
+                </PulseAvatar>
 
                 <View style={styles.threadContent}>
                     <View style={styles.threadHeader}>
                         <Text style={[styles.threadName, { color: colors.text }]} numberOfLines={1}>
                             {item.name}
                         </Text>
-                        {item.type === 'socius' && (
-                            <View style={[styles.aiTag, { backgroundColor: colors.primary }]}>
+                        {item.type === 'socius' && item.sociusRole && (
+                            <View style={[
+                                styles.aiTag,
+                                {
+                                    backgroundColor: (() => {
+                                        const role = item.sociusRole.toLowerCase();
+                                        if (role.includes('bible') || role.includes('christian')) return '#8D6E63';
+                                        if (role.includes('workout') || role.includes('fitness')) return '#FF3B30';
+                                        if (role.includes('diary') || role.includes('journal')) return '#FF2D55';
+                                        if (role.includes('calorie') || role.includes('nutrition') || role.includes('diet') || role.includes('tracker')) return '#34C759';
+                                        if (role.includes('note')) return '#FF9500';
+                                        if (role.includes('password') || role.includes('secret')) return '#5856D6';
+                                        if (role.includes('multilingual') || role.includes('language')) return '#C7C7CC';
+                                        return '#007AFF'; // Default Socius Blue
+                                    })()
+                                }
+                            ]}>
                                 <Text style={styles.aiTagText}>
-                                    {t('chat.socius')} {item.sociusRole ? `• ${t(`setup.roles.${item.sociusRole}`) !== `setup.roles.${item.sociusRole}` ? t(`setup.roles.${item.sociusRole}`) : (item.sociusRole.charAt(0).toUpperCase() + item.sociusRole.slice(1))}` : ''}
+                                    {t(`setup.roles.${item.sociusRole}`) !== `setup.roles.${item.sociusRole}` ? t(`setup.roles.${item.sociusRole}`) : (item.sociusRole.charAt(0).toUpperCase() + item.sociusRole.slice(1))}
+                                    {item.sociusRole === 'multilingual' && item.multilingual_selection && (
+                                        (() => {
+                                            const flags: Record<string, string> = {
+                                                'en': ' 🇺🇸', 'ko': ' 🇰🇷', 'ja': ' 🇯🇵', 'zh': ' 🇨🇳', 'es': ' 🇪🇸', 'fr': ' 🇫🇷', 'de': ' 🇩🇪'
+                                            };
+                                            return flags[item.multilingual_selection] || '';
+                                        })()
+                                    )}
                                 </Text>
                             </View>
                         )}
                         {item.type === 'user' && (
-                            <View style={[styles.aiTag, { backgroundColor: colors.success }]}>
+                            <View style={[styles.aiTag, { backgroundColor: '#5AC8FA' }]}>
                                 <Text style={styles.aiTagText}>
                                     {t('friends.user_friend') || 'User. Friend.'}
                                 </Text>
                             </View>
                         )}
                     </View>
-                    <Text
-                        style={[
-                            styles.lastMessage,
-                            { color: (item.unread || 0) > 0 ? colors.text : colors.textSecondary },
-                            (item.unread || 0) > 0 && styles.unreadMessage
-                        ]}
-                        numberOfLines={1}
-                    >
-                        {item.lastMessage || 'Start a conversation'}
-                    </Text>
+                    {isTyping ? (
+                        <Text style={[styles.typingText, { color: colors.primary }]}>
+                            {t('chat.typing') || 'Socius is typing...'}
+                        </Text>
+                    ) : (
+                        <Text
+                            style={[
+                                styles.lastMessage,
+                                { color: (item.unread || 0) > 0 ? colors.text : colors.textSecondary },
+                                (item.unread || 0) > 0 && styles.unreadMessage
+                            ]}
+                            numberOfLines={1}
+                        >
+                            {item.lastMessage || 'Start a conversation'}
+                        </Text>
+                    )}
                 </View>
 
                 {
@@ -429,4 +522,9 @@ const styles = StyleSheet.create({
         fontSize: 14,
         marginTop: 8,
     },
+    typingText: {
+        fontStyle: 'italic',
+        fontSize: 14,
+        marginTop: 4,
+    }
 });

@@ -286,135 +286,143 @@ export default function WorkoutScreen() {
             {/* Stats Modal */}
             <Modal visible={showStatsModal} animationType="slide" transparent>
                 <KeyboardAvoidingView
-                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                    style={styles.modalOverlay}
+                    behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                    style={{ flex: 1 }}
                 >
-                    <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
-                        <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginBottom: 20 }}>
-                            <Text style={[styles.modalTitle, { color: colors.text, marginBottom: 0 }]}>{t('workout.edit_profile')}</Text>
-                            <TouchableOpacity
-                                style={{ position: 'absolute', right: 0 }}
-                                onPress={() => setShowStatsModal(false)}
-                            >
-                                <Ionicons name="close" size={24} color={colors.textSecondary} />
-                            </TouchableOpacity>
-                        </View>
-
-                        <Text style={{ color: colors.textSecondary, marginBottom: 16 }}>{t('workout.bmr_explanation')}</Text>
-
-                        <View style={styles.inputRow}>
-                            <View style={{ flex: 1 }}>
-                                <Text style={[styles.inputLabel, { color: colors.text }]}>{t('workout.weight')}</Text>
-                                <TextInput
-                                    style={[styles.input, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border }]}
-                                    value={weightInput}
-                                    onChangeText={setWeightInput}
-                                    keyboardType="numeric"
-                                    placeholder="60"
-                                    placeholderTextColor={colors.textSecondary}
-                                />
+                    <View style={styles.modalOverlay}>
+                        <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
+                            <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginBottom: 20 }}>
+                                <Text style={[styles.modalTitle, { color: colors.text, marginBottom: 0 }]}>{t('workout.edit_profile')}</Text>
+                                <TouchableOpacity
+                                    style={{ position: 'absolute', right: 0 }}
+                                    onPress={() => setShowStatsModal(false)}
+                                >
+                                    <Ionicons name="close" size={24} color={colors.textSecondary} />
+                                </TouchableOpacity>
                             </View>
-                            <View style={{ width: 16 }} />
-                            <View style={{ flex: 1 }}>
-                                <Text style={[styles.inputLabel, { color: colors.text }]}>{t('workout.height')}</Text>
-                                <TextInput
-                                    style={[styles.input, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border }]}
-                                    value={heightInput}
-                                    onChangeText={setHeightInput}
-                                    keyboardType="numeric"
-                                    placeholder="170"
-                                    placeholderTextColor={colors.textSecondary}
-                                />
-                            </View>
-                        </View>
 
-                        <View style={styles.inputRow}>
-                            <View style={{ flex: 1 }}>
-                                <Text style={[styles.inputLabel, { color: colors.text }]}>{t('workout.age')}</Text>
-                                <TextInput
-                                    style={[styles.input, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border }]}
-                                    value={ageInput}
-                                    onChangeText={setAgeInput}
-                                    keyboardType="numeric"
-                                    placeholder="25"
-                                    placeholderTextColor={colors.textSecondary}
-                                />
-                            </View>
-                            <View style={{ width: 16 }} />
-                            <View style={{ flex: 1 }}>
-                                <Text style={[styles.inputLabel, { color: colors.text }]}>{t('workout.gender')}</Text>
-                                <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
-                                    <TouchableOpacity
-                                        style={[styles.genderBtn, genderInput === 'male' && { backgroundColor: colors.primary }]}
-                                        onPress={() => setGenderInput('male')}
-                                    >
-                                        <Text style={{ color: genderInput === 'male' ? '#fff' : colors.text }}>{t('workout.male')}</Text>
-                                    </TouchableOpacity>
-                                    <TouchableOpacity
-                                        style={[styles.genderBtn, genderInput === 'female' && { backgroundColor: colors.primary }]}
-                                        onPress={() => setGenderInput('female')}
-                                    >
-                                        <Text style={{ color: genderInput === 'female' ? '#fff' : colors.text }}>{t('workout.female')}</Text>
-                                    </TouchableOpacity>
+                            <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+                                <Text style={{ color: colors.textSecondary, marginBottom: 16 }}>{t('workout.bmr_explanation')}</Text>
+
+                                <View style={styles.inputRow}>
+                                    <View style={{ flex: 1 }}>
+                                        <Text style={[styles.inputLabel, { color: colors.text }]}>{t('workout.weight')}</Text>
+                                        <TextInput
+                                            style={[styles.input, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border }]}
+                                            value={weightInput}
+                                            onChangeText={setWeightInput}
+                                            keyboardType="numeric"
+                                            placeholder="60"
+                                            placeholderTextColor={colors.textSecondary}
+                                        />
+                                    </View>
+                                    <View style={{ width: 16 }} />
+                                    <View style={{ flex: 1 }}>
+                                        <Text style={[styles.inputLabel, { color: colors.text }]}>{t('workout.height')}</Text>
+                                        <TextInput
+                                            style={[styles.input, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border }]}
+                                            value={heightInput}
+                                            onChangeText={setHeightInput}
+                                            keyboardType="numeric"
+                                            placeholder="170"
+                                            placeholderTextColor={colors.textSecondary}
+                                        />
+                                    </View>
                                 </View>
-                            </View>
-                        </View>
 
-                        <TouchableOpacity style={[styles.saveButton, { backgroundColor: colors.primary }]} onPress={saveStats}>
-                            <Text style={styles.saveButtonText}>{t('common.save')}</Text>
-                        </TouchableOpacity>
+                                <View style={styles.inputRow}>
+                                    <View style={{ flex: 1 }}>
+                                        <Text style={[styles.inputLabel, { color: colors.text }]}>{t('workout.age')}</Text>
+                                        <TextInput
+                                            style={[styles.input, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border }]}
+                                            value={ageInput}
+                                            onChangeText={setAgeInput}
+                                            keyboardType="numeric"
+                                            placeholder="25"
+                                            placeholderTextColor={colors.textSecondary}
+                                        />
+                                    </View>
+                                    <View style={{ width: 16 }} />
+                                    <View style={{ flex: 1 }}>
+                                        <Text style={[styles.inputLabel, { color: colors.text }]}>{t('workout.gender')}</Text>
+                                        <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
+                                            <TouchableOpacity
+                                                style={[styles.genderBtn, genderInput === 'male' && { backgroundColor: colors.primary }]}
+                                                onPress={() => setGenderInput('male')}
+                                            >
+                                                <Text style={{ color: genderInput === 'male' ? '#fff' : colors.text }}>{t('workout.male')}</Text>
+                                            </TouchableOpacity>
+                                            <TouchableOpacity
+                                                style={[styles.genderBtn, genderInput === 'female' && { backgroundColor: colors.primary }]}
+                                                onPress={() => setGenderInput('female')}
+                                            >
+                                                <Text style={{ color: genderInput === 'female' ? '#fff' : colors.text }}>{t('workout.female')}</Text>
+                                            </TouchableOpacity>
+                                        </View>
+                                    </View>
+                                </View>
+
+                                <TouchableOpacity style={[styles.saveButton, { backgroundColor: colors.primary }]} onPress={saveStats}>
+                                    <Text style={styles.saveButtonText}>{t('common.save')}</Text>
+                                </TouchableOpacity>
+                            </ScrollView>
+                        </View>
                     </View>
                 </KeyboardAvoidingView>
             </Modal>
 
             {/* Add Activity Modal */}
             <Modal visible={showAddModal} animationType="slide" transparent>
-                <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.modalOverlay}>
-                    <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
-                        <Text style={[styles.modalTitle, { color: colors.text }]}>{t('workout.add_activity')}</Text>
+                <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
+                    <View style={styles.modalOverlay}>
+                        <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
+                            <Text style={[styles.modalTitle, { color: colors.text }]}>{t('workout.add_activity')}</Text>
 
-                        <Text style={[styles.inputLabel, { color: colors.text }]}>{t('workout.activity_name')}</Text>
-                        <TextInput
-                            style={[styles.input, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border }]}
-                            value={activityName}
-                            onChangeText={setActivityName}
-                            placeholder="Running, Gym, etc."
-                            placeholderTextColor={colors.textSecondary}
-                        />
-
-                        <View style={styles.inputRow}>
-                            <View style={{ flex: 1 }}>
-                                <Text style={[styles.inputLabel, { color: colors.text }]}>{t('workout.duration')}</Text>
+                            <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+                                <Text style={[styles.inputLabel, { color: colors.text }]}>{t('workout.activity_name')}</Text>
                                 <TextInput
                                     style={[styles.input, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border }]}
-                                    value={durationInput}
-                                    onChangeText={setDurationInput}
-                                    keyboardType="numeric"
-                                    placeholder="30"
+                                    value={activityName}
+                                    onChangeText={setActivityName}
+                                    placeholder="Running, Gym, etc."
                                     placeholderTextColor={colors.textSecondary}
                                 />
-                            </View>
-                            <View style={{ width: 16 }} />
-                            <View style={{ flex: 1 }}>
-                                <Text style={[styles.inputLabel, { color: colors.text }]}>{t('workout.calories_burned')}</Text>
-                                <TextInput
-                                    style={[styles.input, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border }]}
-                                    value={caloriesInput}
-                                    onChangeText={setCaloriesInput}
-                                    keyboardType="numeric"
-                                    placeholder="200"
-                                    placeholderTextColor={colors.textSecondary}
-                                />
-                            </View>
-                        </View>
 
-                        <View style={styles.modalActions}>
-                            <TouchableOpacity style={styles.cancelButton} onPress={() => setShowAddModal(false)}>
-                                <Text style={{ color: colors.text }}>{t('common.cancel')}</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity style={[styles.saveButton, { backgroundColor: colors.primary, flex: 1, marginTop: 0 }]} onPress={addActivity}>
-                                <Text style={styles.saveButtonText}>{t('workout.save')}</Text>
-                            </TouchableOpacity>
+                                <View style={styles.inputRow}>
+                                    <View style={{ flex: 1 }}>
+                                        <Text style={[styles.inputLabel, { color: colors.text }]}>{t('workout.duration')}</Text>
+                                        <TextInput
+                                            style={[styles.input, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border }]}
+                                            value={durationInput}
+                                            onChangeText={setDurationInput}
+                                            keyboardType="numeric"
+                                            placeholder="30"
+                                            placeholderTextColor={colors.textSecondary}
+                                        />
+                                    </View>
+                                    <View style={{ width: 16 }} />
+                                    <View style={{ flex: 1 }}>
+                                        <Text style={[styles.inputLabel, { color: colors.text }]}>{t('workout.calories_burned')}</Text>
+                                        <TextInput
+                                            style={[styles.input, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border }]}
+                                            value={caloriesInput}
+                                            onChangeText={setCaloriesInput}
+                                            keyboardType="numeric"
+                                            placeholder="200"
+                                            placeholderTextColor={colors.textSecondary}
+                                        />
+                                    </View>
+                                </View>
+
+                                <View style={styles.modalActions}>
+                                    <TouchableOpacity style={styles.cancelButton} onPress={() => setShowAddModal(false)}>
+                                        <Text style={{ color: colors.text }}>{t('common.cancel')}</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity style={[styles.saveButton, { backgroundColor: colors.primary, flex: 1, marginTop: 0 }]} onPress={addActivity}>
+                                        <Text style={styles.saveButtonText}>{t('workout.save')}</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            </ScrollView>
                         </View>
                     </View>
                 </KeyboardAvoidingView>
@@ -450,8 +458,8 @@ const styles = StyleSheet.create({
     activityCalories: { fontSize: 16, fontWeight: '700' },
     emptyState: { alignItems: 'center', padding: 20 },
     fab: { position: 'absolute', right: 20, bottom: 20, width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 4, elevation: 8 },
-    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-    modalContent: { borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40 },
+    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', paddingHorizontal: 16 },
+    modalContent: { borderRadius: 24, padding: 24 },
     modalTitle: { fontSize: 20, fontWeight: '700', marginBottom: 20, textAlign: 'center' },
     inputRow: { flexDirection: 'row', marginBottom: 16 },
     inputLabel: { fontSize: 14, fontWeight: '600', marginBottom: 8 },

@@ -26,7 +26,7 @@ import api from '../../services/api';
 const { width } = Dimensions.get('window');
 
 // --- TYPES ---
-type Step = 'role' | 'avatar' | 'name' | 'intimacy' | 'tone';
+type Step = 'role' | 'language' | 'avatar' | 'name' | 'intimacy' | 'tone';
 
 interface SetupState {
     role: string;
@@ -34,23 +34,34 @@ interface SetupState {
     name: string;
     intimacy: number; // 1-7
     tone: string;
+    multilingual_selection: string | null;
 }
 
 // --- CONSTANTS ---
 const ROLES = [
-    { id: 'christian', label: 'Devoted Christian', icon: 'book' },
-    { id: 'multilingual', label: 'Multilingual', icon: 'globe' },
-    { id: 'tracker', label: 'Calorie Tracker', icon: 'nutrition' },
-    { id: 'casual', label: 'Casual', icon: 'cafe' },
-    { id: 'romantic', label: 'Romantic', icon: 'heart' },
-    { id: 'workout', label: 'Workout Friend', icon: 'fitness' },
-    { id: 'assistant', label: 'Personal Assistant', icon: 'calendar' },
+    { id: 'christian', label: 'Christian Friend', icon: 'book', color: '#8D6E63' },
+    { id: 'casual', label: 'Casual Friend', icon: 'cafe', color: '#5AC8FA' },
+    { id: 'multilingual', label: 'Multilingual Friend', icon: 'globe', color: '#C7C7CC' },
+    { id: 'cal_tracker', label: 'Calorie Tracker', icon: 'nutrition', color: '#34C759' },
+    { id: 'romantic', label: 'Romantic Friend', icon: 'heart', color: '#FF2D55' },
+    { id: 'assistant', label: 'Personal Assistant', icon: 'calendar', color: '#FF9500' },
+    { id: 'workout', label: 'Workout Friend', icon: 'fitness', color: '#FF3B30' },
+    { id: 'secrets', label: 'Secrets Friend', icon: 'key', color: '#5856D6' },
 ];
 
 const TONES = [
     { id: 'formal', label: 'Formal', example: 'Hello, how may I assist you today?' },
     { id: 'casual', label: 'Casual', example: 'Hey! What are you up to?' },
-    { id: 'friendly', label: 'Friendly', example: 'Hi friend! How is your day going?' },
+];
+
+const LANGUAGES = [
+    { id: 'en', flag: '🇺🇸' },
+    { id: 'ko', flag: '🇰🇷' },
+    { id: 'ja', flag: '🇯🇵' },
+    { id: 'zh', flag: '🇨🇳' },
+    { id: 'es', flag: '🇪🇸' },
+    { id: 'fr', flag: '🇫🇷' },
+    { id: 'de', flag: '🇩🇪' },
 ];
 
 export default function SociusSetupScreen() {
@@ -65,10 +76,11 @@ export default function SociusSetupScreen() {
         name: '',
         intimacy: 4, // Default to Friend level (middle of 1-7)
         tone: 'casual',
+        multilingual_selection: null,
     });
     const [loading, setLoading] = useState(false);
     const [avatarsLoading, setAvatarsLoading] = useState(true);
-    const [loadedAvatarCount, setLoadedAvatarCount] = useState(0);
+    const [, setLoadedAvatarCount] = useState(0);
     const totalAvatars = Object.keys(SOCIUS_AVATAR_MAP).length;
 
     // --- Slider Logic ---
@@ -100,7 +112,11 @@ export default function SociusSetupScreen() {
     };
 
     const handleNext = () => {
-        if (step === 'role') setStep('avatar');
+        if (step === 'role') {
+            if (state.role === 'multilingual') setStep('language');
+            else setStep('avatar');
+        }
+        else if (step === 'language') setStep('avatar');
         else if (step === 'avatar') setStep('name');
         else if (step === 'name') setStep('intimacy');
         else if (step === 'intimacy') setStep('tone');
@@ -109,7 +125,11 @@ export default function SociusSetupScreen() {
 
     const handleBack = () => {
         if (step === 'role') router.back();
-        else if (step === 'avatar') setStep('role');
+        else if (step === 'language') setStep('role');
+        else if (step === 'avatar') {
+            if (state.role === 'multilingual') setStep('language');
+            else setStep('role');
+        }
         else if (step === 'name') setStep('avatar');
         else if (step === 'intimacy') setStep('name');
         else if (step === 'tone') setStep('intimacy');
@@ -124,6 +144,7 @@ export default function SociusSetupScreen() {
                 avatar: state.avatar,
                 intimacy: state.intimacy,
                 tone: state.tone,
+                multilingual_selection: state.multilingual_selection,
             });
             router.replace('/messages'); // Go to messages screen
         } catch (error: any) {
@@ -155,18 +176,21 @@ export default function SociusSetupScreen() {
                         key={role.id}
                         style={[
                             styles.roleCard,
-                            { backgroundColor: state.role === role.id ? colors.primary : colors.card, borderColor: colors.border }
+                            {
+                                backgroundColor: state.role === role.id ? role.color : colors.card,
+                                borderColor: state.role === role.id ? role.color : colors.border
+                            }
                         ]}
                         onPress={() => updateState('role', role.id)}
                     >
                         <Ionicons
                             name={role.icon as any}
                             size={32}
-                            color={state.role === role.id ? '#fff' : colors.primary}
+                            color={state.role === role.id ? '#fff' : role.color}
                         />
                         <Text style={[
                             styles.roleLabel,
-                            { color: state.role === role.id ? '#fff' : colors.text }
+                            { color: state.role === role.id ? '#fff' : role.color }
                         ]}>
                             {t(`setup.roles.${role.id}`)}
                         </Text>
@@ -333,8 +357,41 @@ export default function SociusSetupScreen() {
         </ScrollView>
     );
 
+    const renderLanguageStep = () => (
+        <ScrollView contentContainerStyle={styles.gridContainer}>
+            <Text style={[styles.stepTitle, { color: colors.text }]}>{t('setup.step_language_title')}</Text>
+            <View style={styles.list}>
+                {LANGUAGES.map(lang => (
+                    <TouchableOpacity
+                        key={lang.id}
+                        style={[
+                            styles.toneCard, // Reuse tone card style
+                            {
+                                backgroundColor: state.multilingual_selection === lang.id ? colors.primary : colors.card,
+                                borderColor: colors.border,
+                                flexDirection: 'row',
+                                alignItems: 'center',
+                                justifyContent: 'space-between'
+                            }
+                        ]}
+                        onPress={() => updateState('multilingual_selection', lang.id)}
+                    >
+                        <Text style={[
+                            styles.toneLabel,
+                            { color: state.multilingual_selection === lang.id ? '#fff' : colors.text }
+                        ]}>
+                            {t(`setup.languages.${lang.id}`)}
+                        </Text>
+                        <Text style={{ fontSize: 32 }}>{lang.flag}</Text>
+                    </TouchableOpacity>
+                ))}
+            </View>
+        </ScrollView>
+    );
+
     const canProceed = () => {
         if (step === 'role') return !!state.role;
+        if (step === 'language') return !!state.multilingual_selection;
         if (step === 'avatar') return !!state.avatar;
         if (step === 'name') return !!state.name.trim();
         return true;
@@ -350,6 +407,7 @@ export default function SociusSetupScreen() {
                 keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0}
             >
                 {step === 'role' && renderRoleStep()}
+                {step === 'language' && renderLanguageStep()}
                 {step === 'avatar' && renderAvatarStep()}
                 {step === 'name' && renderNameStep()}
                 {step === 'intimacy' && renderIntimacyStep()}

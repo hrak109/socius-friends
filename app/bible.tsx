@@ -37,7 +37,7 @@ const VERSIONS = [
 ];
 
 export default function BibleScreen() {
-    const { colors, isDark } = useTheme();
+    const { colors, isDark, accentColor } = useTheme();
     const router = useRouter();
     const { t, language } = useLanguage();
     const insets = useSafeAreaInsets();
@@ -55,11 +55,10 @@ export default function BibleScreen() {
     const [isVersionPickerVisible, setIsVersionPickerVisible] = useState(false);
     const [isNavVisible, setIsNavVisible] = useState(false);
     const [navMode, setNavMode] = useState<'book' | 'chapter'>('book');
-    const [isSearchVisible, setIsSearchVisible] = useState(false);
+    const [, setIsSearchVisible] = useState(false);
     const [searchText, setSearchText] = useState('');
 
     // Header auto-hide on scroll
-    const scrollY = useRef(new Animated.Value(0)).current;
     const lastScrollY = useRef(0);
     const headerTranslateY = useRef(new Animated.Value(0)).current;
     const HEADER_HEIGHT = 60 + insets.top; // Include safe area inset
@@ -68,8 +67,8 @@ export default function BibleScreen() {
         const currentScrollY = event.nativeEvent.contentOffset.y;
         const diff = currentScrollY - lastScrollY.current;
 
-        if (suggestions.length > 0) {
-            // Keep header visible when suggestions are shown
+        if (suggestions.length > 0 || isVersionPickerVisible) {
+            // Keep header visible when suggestions are shown or version picker is open
             Animated.timing(headerTranslateY, {
                 toValue: 0,
                 duration: 200,
@@ -203,7 +202,7 @@ export default function BibleScreen() {
         const chapterVerseMatch = trimmed.match(/^(\d+):(\d+)$/);
         if (chapterVerseMatch) {
             const chapter = parseInt(chapterVerseMatch[1]) - 1;
-            const verse = parseInt(chapterVerseMatch[2]) - 1;
+            // Note: verse parsing available via chapterVerseMatch[2] if needed for future scroll-to-verse feature
             if (currentBook && chapter >= 0 && chapter < currentBook.chapters.length) {
                 setSelectedChapterIndex(chapter);
                 setSearchText('');
@@ -459,13 +458,23 @@ export default function BibleScreen() {
                                     keyExtractor={(item, index) => `chapter-${index}`}
                                     renderItem={({ index }) => (
                                         <TouchableOpacity
-                                            style={[styles.chapterBox, { backgroundColor: colors.inputBackground }]}
+                                            style={[
+                                                styles.chapterBox,
+                                                {
+                                                    backgroundColor: selectedChapterIndex === index ? colors.primary : colors.inputBackground,
+                                                    borderColor: selectedChapterIndex === index ? colors.primary : 'transparent',
+                                                    borderWidth: 1
+                                                }
+                                            ]}
                                             onPress={() => {
                                                 setSelectedChapterIndex(index);
                                                 setIsNavVisible(false);
                                             }}
                                         >
-                                            <Text style={[styles.chapterBoxText, { color: colors.text }, selectedChapterIndex === index && { color: colors.primary, fontWeight: 'bold' }]}>
+                                            <Text style={[
+                                                styles.chapterBoxText,
+                                                { color: selectedChapterIndex === index ? '#fff' : colors.text }
+                                            ]}>
                                                 {index + 1}
                                             </Text>
                                         </TouchableOpacity>
@@ -488,7 +497,7 @@ export default function BibleScreen() {
     if (isLoading) {
         return (
             <SafeAreaView style={[styles.container, { backgroundColor: colors.background, justifyContent: 'center', alignItems: 'center' }]}>
-                <Stack.Screen options={{ headerShown: false }} />
+                <Stack.Screen options={{ headerShown: false, gestureEnabled: false }} />
                 <ActivityIndicator size="large" color={colors.primary} />
             </SafeAreaView>
         );
@@ -496,28 +505,39 @@ export default function BibleScreen() {
 
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-            <Stack.Screen options={{ title: t('bible.title'), headerBackTitle: t('common.back') }} />
+            <Stack.Screen options={{ title: t('bible.title'), headerBackTitle: t('common.back'), gestureEnabled: false }} />
 
             {/* Animated Header that hides on scroll */}
             <Animated.View style={[
                 styles.animatedHeaderContainer,
-                { transform: [{ translateY: headerTranslateY }], backgroundColor: colors.background, paddingTop: insets.top }
+                {
+                    transform: [{ translateY: headerTranslateY }],
+                    backgroundColor: colors.background,
+                    paddingTop: insets.top,
+                    shadowColor: '#000',
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: isDark ? 0.3 : 0.08,
+                    shadowRadius: 8,
+                    elevation: 4,
+                }
             ]}>
-                <View style={[styles.header, { borderBottomColor: colors.border }]}>
-                    {/* Left back button balancing version selector */}
-                    <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-                        <Ionicons name={Platform.OS === 'ios' ? "chevron-back" : "arrow-back"} size={28} color={colors.text} />
-                    </TouchableOpacity>
+                <View style={styles.header}>
+                    {/* Back button and Title */}
+                    <View style={styles.headerTitleContainer}>
+                        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+                            <Ionicons name={Platform.OS === 'ios' ? "chevron-back" : "arrow-back"} size={26} color={colors.text} />
+                        </TouchableOpacity>
+                        <Text style={[styles.headerTitle, { color: colors.text }]}>{t('bible.title')}</Text>
+                    </View>
 
+                    {/* Search bar */}
                     <View style={[styles.searchBarContainer, {
-                        backgroundColor: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.05)',
-                        borderWidth: 1,
-                        borderColor: isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.08)'
+                        backgroundColor: accentColor + (isDark ? '20' : '15'),
                     }]}>
-                        <Ionicons name="search" size={20} color={colors.textSecondary} style={styles.searchIcon} />
+                        <Ionicons name="search" size={16} color={accentColor} style={styles.searchIcon} />
                         <TextInput
                             style={[styles.searchBarInput, { color: colors.text }]}
-                            placeholder=""
+                            placeholder={currentBook?.name ? `${currentBook.name} ${validChapterIndex + 1}` : 'Search...'}
                             placeholderTextColor={colors.textSecondary}
                             value={searchText}
                             onChangeText={setSearchText}
@@ -526,12 +546,20 @@ export default function BibleScreen() {
                         />
                         {searchText.length > 0 && (
                             <TouchableOpacity onPress={() => setSearchText('')} style={styles.searchClearBtn}>
-                                <Ionicons name="close-circle" size={20} color={colors.textSecondary} />
+                                <Ionicons name="close-circle" size={16} color={accentColor} />
                             </TouchableOpacity>
                         )}
                     </View>
-                    <TouchableOpacity style={styles.versionSelector} onPress={() => setIsVersionPickerVisible(!isVersionPickerVisible)}>
+
+                    {/* Version selector pill */}
+                    <TouchableOpacity
+                        style={[styles.versionSelector, {
+                            backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : colors.primary + '15',
+                        }]}
+                        onPress={() => setIsVersionPickerVisible(!isVersionPickerVisible)}
+                    >
                         <Text style={[styles.versionText, { color: colors.primary }]}>{selectedVersion}</Text>
+                        <Ionicons name="chevron-down" size={14} color={colors.primary} style={{ marginLeft: 2 }} />
                     </TouchableOpacity>
                 </View>
             </Animated.View>
@@ -569,19 +597,44 @@ export default function BibleScreen() {
 
 
             {isVersionPickerVisible && (
-                <View style={[styles.pickerContainer, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
-                    {VERSIONS.map((v) => (
+                <View style={[
+                    styles.pickerContainer,
+                    {
+                        backgroundColor: colors.card,
+                        borderBottomColor: colors.border,
+                        top: 60 + insets.top,
+                    }
+                ]}>
+                    {VERSIONS.map((v, index) => (
                         <TouchableOpacity
                             key={v.id}
-                            style={[styles.pickerItem, { borderBottomColor: colors.border }]}
+                            style={[
+                                styles.pickerItem,
+                                {
+                                    borderBottomColor: colors.border,
+                                    backgroundColor: selectedVersion === v.id
+                                        ? (isDark ? 'rgba(255,255,255,0.05)' : colors.primary + '08')
+                                        : 'transparent',
+                                },
+                                index === VERSIONS.length - 1 && { borderBottomWidth: 0 }
+                            ]}
                             onPress={() => {
                                 setSelectedVersion(v.id);
                                 setIsVersionPickerVisible(false);
                             }}
                         >
-                            <Text style={[styles.pickerItemText, { color: colors.text }, selectedVersion === v.id && { color: colors.primary, fontWeight: 'bold' }]}>
-                                {v.name}
-                            </Text>
+                            <View style={styles.pickerItemContent}>
+                                <Text style={[
+                                    styles.pickerItemText,
+                                    { color: colors.text },
+                                    selectedVersion === v.id && { color: colors.primary, fontWeight: '600' }
+                                ]}>
+                                    {v.name}
+                                </Text>
+                                {selectedVersion === v.id && (
+                                    <Ionicons name="checkmark" size={20} color={colors.primary} />
+                                )}
+                            </View>
                         </TouchableOpacity>
                     ))}
                 </View>
@@ -621,17 +674,17 @@ export default function BibleScreen() {
             {/* Floating Navigation Controls - iOS 26 Glassy Design */}
             {hasValidData && (
                 <View style={styles.floatingNavContainer}>
-                    <View style={[styles.glassyNavWrapper, { backgroundColor: isDark ? 'rgba(60, 60, 60, 0.3)' : 'rgba(255, 255, 255, 0.3)' }]}>
-                        <BlurView intensity={60} tint={isDark ? 'dark' : 'light'} style={styles.blurContainerExpanded}>
+                    <View style={[styles.glassyNavWrapper, { backgroundColor: isDark ? 'rgba(45, 45, 48, 0.85)' : 'rgba(255, 255, 255, 0.9)' }]}>
+                        <BlurView intensity={80} tint={isDark ? 'dark' : 'light'} style={styles.blurContainerExpanded}>
                             <TouchableOpacity onPress={handlePrevChapter} style={styles.navButton}>
-                                <Ionicons name="chevron-back" size={22} color={isDark ? 'rgba(255,255,255,0.9)' : 'rgba(0,0,0,0.8)'} />
+                                <Ionicons name="chevron-back" size={22} color={isDark ? 'rgba(255,255,255,0.95)' : 'rgba(0,0,0,0.85)'} />
                             </TouchableOpacity>
 
                             <TouchableOpacity onPress={() => setIsNavVisible(true)} style={styles.floatingNavCenter}>
-                                <Text style={[styles.floatingBookName, { color: isDark ? 'rgba(255,255,255,0.95)' : 'rgba(0,0,0,0.85)' }]} numberOfLines={1}>
+                                <Text style={[styles.floatingBookName, { color: isDark ? 'rgba(255,255,255,0.98)' : 'rgba(0,0,0,0.9)' }]} numberOfLines={1}>
                                     {currentBook?.name}
                                 </Text>
-                                <Text style={[styles.floatingChapter, { color: isDark ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)' }]}>
+                                <Text style={[styles.floatingChapter, { color: isDark ? 'rgba(255,255,255,0.75)' : 'rgba(0,0,0,0.65)' }]}>
                                     {language === 'ko'
                                         ? `${selectedChapterIndex + 1}${t('bible.chapter')}`
                                         : `${t('bible.chapter')} ${selectedChapterIndex + 1}`}
@@ -639,7 +692,7 @@ export default function BibleScreen() {
                             </TouchableOpacity>
 
                             <TouchableOpacity onPress={handleNextChapter} style={styles.navButton}>
-                                <Ionicons name="chevron-forward" size={22} color={isDark ? 'rgba(255,255,255,0.9)' : 'rgba(0,0,0,0.8)'} />
+                                <Ionicons name="chevron-forward" size={22} color={isDark ? 'rgba(255,255,255,0.95)' : 'rgba(0,0,0,0.85)'} />
                             </TouchableOpacity>
                         </BlurView>
                     </View>
@@ -714,11 +767,9 @@ const styles = StyleSheet.create({
     header: {
         flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'center',
-        paddingHorizontal: 16,
-        paddingVertical: 8,
-        borderBottomWidth: 1,
-        gap: 12,
+        paddingHorizontal: 12,
+        paddingVertical: 10,
+        gap: 10,
     },
     animatedHeaderContainer: {
         position: 'absolute',
@@ -737,88 +788,125 @@ const styles = StyleSheet.create({
         fontWeight: '600',
     },
     versionSelector: {
-        padding: 5,
-        minWidth: 50,
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 8,
+        paddingHorizontal: 12,
+        borderRadius: 20,
     },
     backButton: {
-        padding: 5,
-        minWidth: 50,
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        alignItems: 'center',
         justifyContent: 'center',
     },
     versionText: {
-        fontWeight: 'bold',
-        fontSize: 12,
+        fontWeight: '700',
+        fontSize: 13,
+        letterSpacing: 0.3,
     },
     pickerContainer: {
+        position: 'absolute',
+        left: 0,
+        right: 0,
         borderBottomWidth: 1,
-        elevation: 3,
-        zIndex: 10,
+        elevation: 5,
+        zIndex: 99,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.15,
+        shadowRadius: 8,
     },
     pickerItem: {
-        padding: 15,
-        borderBottomWidth: 1,
+        paddingVertical: 14,
+        paddingHorizontal: 20,
+        borderBottomWidth: StyleSheet.hairlineWidth,
+    },
+    pickerItemContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
     },
     pickerItemText: {
         fontSize: 16,
+        fontWeight: '400',
+        letterSpacing: 0.2,
     },
     content: {
-        paddingHorizontal: 20,
-        paddingBottom: 40,
-        paddingTop: 10,
+        paddingHorizontal: 24,
+        paddingBottom: 100,
+        paddingTop: 16,
     },
     chapterTitle: {
-        fontSize: 22,
-        fontWeight: 'bold',
-        marginBottom: 20,
+        fontSize: 28,
+        fontWeight: '700',
+        marginTop: 10,
+        marginBottom: 28,
         textAlign: 'center',
+        letterSpacing: -0.5,
     },
     verseContainer: {
         flexDirection: 'row',
-        marginBottom: 12,
+        marginBottom: 16,
         alignItems: 'flex-start',
+        paddingVertical: 4,
     },
     verseNumber: {
-        fontSize: 12,
-        width: 25,
-        paddingTop: 4,
-        fontWeight: 'bold',
+        fontSize: 11,
+        width: 28,
+        paddingTop: 6,
+        fontWeight: '600',
+        opacity: 0.5,
     },
     bibleText: {
         flex: 1,
-        fontSize: 18,
-        lineHeight: 28,
+        fontSize: 19,
+        lineHeight: 32,
+        letterSpacing: 0.2,
+        fontWeight: '400',
     },
     modalOverlay: {
         flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.5)',
+        backgroundColor: 'rgba(0,0,0,0.6)',
         justifyContent: 'flex-end',
     },
     modalContent: {
-        height: '70%',
-        borderTopLeftRadius: 20,
-        borderTopRightRadius: 20,
-        padding: 20,
+        height: '75%',
+        borderTopLeftRadius: 28,
+        borderTopRightRadius: 28,
+        padding: 24,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: -4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 12,
+        elevation: 8,
     },
     modalHeader: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 20,
-        borderBottomWidth: 1,
-        paddingBottom: 10,
+        marginBottom: 24,
+        borderBottomWidth: StyleSheet.hairlineWidth,
+        paddingBottom: 16,
     },
     modalTab: {
-        fontSize: 18,
-        marginRight: 20,
+        fontSize: 17,
+        fontWeight: '600',
+        marginRight: 24,
     },
     closeBtn: {
         marginLeft: 'auto',
+        padding: 4,
     },
     navItem: {
-        paddingVertical: 15,
-        borderBottomWidth: 1,
+        paddingVertical: 16,
+        paddingHorizontal: 4,
+        borderBottomWidth: StyleSheet.hairlineWidth,
     },
     navItemText: {
         fontSize: 16,
+        fontWeight: '500',
+        letterSpacing: 0.1,
     },
     chapterBox: {
         width: '18%',
@@ -826,21 +914,28 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         margin: '1%',
-        borderRadius: 8,
+        borderRadius: 14,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 2,
+        elevation: 1,
     },
     chapterBoxText: {
         fontSize: 16,
+        fontWeight: '600',
     },
     emptyStateContainer: {
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
         paddingVertical: 40,
+        opacity: 0.7,
     },
     emptyStateText: {
-        fontSize: 16,
-        marginTop: 12,
-        fontWeight: '500',
+        fontSize: 17,
+        marginTop: 16,
+        fontWeight: '600',
     },
     emptyStateSubtext: {
         fontSize: 14,
@@ -848,7 +943,7 @@ const styles = StyleSheet.create({
     },
     floatingNavContainer: {
         position: 'absolute',
-        bottom: 30,
+        bottom: 36,
         left: 0,
         right: 0,
         alignItems: 'center',
@@ -864,7 +959,7 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
     },
     navButton: {
-        padding: 6,
+        padding: 5,
     },
     chapterIndicator: {
         fontSize: 15,
@@ -876,7 +971,12 @@ const styles = StyleSheet.create({
         borderRadius: 28,
         overflow: 'hidden',
         borderWidth: 0.5,
-        borderColor: 'rgba(255,255,255,0.2)',
+        borderColor: 'rgba(255,255,255,0.25)',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.2,
+        shadowRadius: 12,
+        elevation: 8,
     },
     chapterTouchable: {
         paddingHorizontal: 12,
@@ -907,24 +1007,37 @@ const styles = StyleSheet.create({
     searchBtn: {
         padding: 5,
     },
+    headerTitleContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginRight: 10,
+    },
+    headerTitle: {
+        fontSize: 20,
+        fontWeight: 'bold',
+        marginLeft: -4,
+        marginRight: 4,
+    },
     searchBarContainer: {
         flex: 1,
         flexDirection: 'row',
         alignItems: 'center',
-        borderRadius: 25,
-        paddingHorizontal: 16,
-        height: 44,
+        borderRadius: 20,
+        paddingHorizontal: 12,
+        height: 36,
     },
     searchIcon: {
-        marginRight: 10,
+        marginRight: 6,
     },
     searchBarInput: {
         flex: 1,
         paddingVertical: 0,
-        fontSize: 16,
+        fontSize: 14,
+        height: '100%',
     },
     searchClearBtn: {
         padding: 4,
+        marginLeft: 2,
     },
     quickNavBar: {
         flexDirection: 'row',
@@ -946,11 +1059,11 @@ const styles = StyleSheet.create({
     blurContainerExpanded: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingVertical: 8,
-        paddingHorizontal: 16,
+        paddingVertical: 6,
+        paddingHorizontal: 12,
         borderRadius: 28,
         overflow: 'hidden',
-        minWidth: 200,
+        minWidth: 160,
         justifyContent: 'space-between',
     },
     floatingNavCenter: {
@@ -959,42 +1072,47 @@ const styles = StyleSheet.create({
         paddingHorizontal: 8,
     },
     floatingBookName: {
-        fontSize: 15,
+        fontSize: 14,
         fontWeight: '700',
         textAlign: 'center',
-        maxWidth: 150,
+        maxWidth: 140,
+        letterSpacing: -0.2,
     },
     floatingChapter: {
-        fontSize: 12,
+        fontSize: 11,
         fontWeight: '500',
-        marginTop: 2,
+        marginTop: 1,
+        opacity: 0.8,
     },
     suggestionsContainer: {
         position: 'absolute',
-        left: 16,
-        right: 16,
+        left: 12,
+        right: 12,
         zIndex: 90,
-        borderRadius: 16,
-        borderWidth: 1,
+        borderRadius: 20,
+        borderWidth: StyleSheet.hairlineWidth,
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.15,
-        shadowRadius: 8,
-        elevation: 5,
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.18,
+        shadowRadius: 16,
+        elevation: 8,
         overflow: 'hidden',
     },
     suggestionItem: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingVertical: 14,
-        paddingHorizontal: 16,
-        borderBottomWidth: 0.5,
+        paddingVertical: 15,
+        paddingHorizontal: 18,
+        borderBottomWidth: StyleSheet.hairlineWidth,
     },
     suggestionIcon: {
-        marginRight: 12,
+        marginRight: 14,
+        opacity: 0.7,
     },
     suggestionText: {
         flex: 1,
-        fontSize: 15,
+        fontSize: 16,
+        fontWeight: '500',
+        letterSpacing: 0.1,
     },
 });

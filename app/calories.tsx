@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, FlatList, Modal, TextInput, Alert, ActivityIndicator, Keyboard, TouchableWithoutFeedback } from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity, FlatList, Modal, TextInput, Alert, ActivityIndicator, Keyboard, TouchableWithoutFeedback, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { Stack } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -207,43 +207,50 @@ export default function CaloriesScreen() {
                 visible={modalVisible}
                 onRequestClose={() => setModalVisible(false)}
             >
-                <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-                    <View style={styles.modalOverlay}>
-                        <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
-                            <View style={styles.modalHeader}>
-                                <Text style={[styles.modalTitle, { color: colors.text }]}>{t('calories.add_entry')}</Text>
-                                <TouchableOpacity onPress={() => setModalVisible(false)}>
-                                    <Ionicons name="close" size={24} color={colors.textSecondary} />
-                                </TouchableOpacity>
+                <KeyboardAvoidingView
+                    behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                    style={{ flex: 1 }}
+                    keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+                >
+                    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+                        <View style={styles.modalOverlay}>
+                            <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
+                                <View style={styles.modalHeader}>
+                                    <Text style={[styles.modalTitle, { color: colors.text }]}>{t('calories.add_entry')}</Text>
+                                    <TouchableOpacity onPress={() => setModalVisible(false)}>
+                                        <Ionicons name="close" size={24} color={colors.textSecondary} />
+                                    </TouchableOpacity>
+                                </View>
+
+                                <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+                                    <TextInput
+                                        style={[styles.input, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#f5f5f5', color: colors.text, borderColor: colors.border }]}
+                                        placeholder={t('calories.food_placeholder')}
+                                        placeholderTextColor={colors.textSecondary}
+                                        value={food}
+                                        onChangeText={setFood}
+                                    />
+
+                                    <TextInput
+                                        style={[styles.input, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#f5f5f5', color: colors.text, borderColor: colors.border }]}
+                                        placeholder={t('calories.calories_placeholder')}
+                                        placeholderTextColor={colors.textSecondary}
+                                        value={calories}
+                                        onChangeText={setCalories}
+                                        keyboardType="number-pad"
+                                    />
+
+                                    <TouchableOpacity
+                                        style={[styles.saveButton, { backgroundColor: colors.primary }]}
+                                        onPress={handleAddEntry}
+                                    >
+                                        <Text style={styles.saveButtonText}>{t('calories.save')}</Text>
+                                    </TouchableOpacity>
+                                </ScrollView>
                             </View>
-
-                            <TextInput
-                                style={[styles.input, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#f5f5f5', color: colors.text, borderColor: colors.border }]}
-                                placeholder={t('calories.food_placeholder')}
-                                placeholderTextColor={colors.textSecondary}
-                                value={food}
-                                onChangeText={setFood}
-                                autoFocus
-                            />
-
-                            <TextInput
-                                style={[styles.input, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#f5f5f5', color: colors.text, borderColor: colors.border }]}
-                                placeholder={t('calories.calories_placeholder')}
-                                placeholderTextColor={colors.textSecondary}
-                                value={calories}
-                                onChangeText={setCalories}
-                                keyboardType="number-pad"
-                            />
-
-                            <TouchableOpacity
-                                style={[styles.saveButton, { backgroundColor: colors.primary }]}
-                                onPress={handleAddEntry}
-                            >
-                                <Text style={styles.saveButtonText}>{t('calories.save')}</Text>
-                            </TouchableOpacity>
                         </View>
-                    </View>
-                </TouchableWithoutFeedback>
+                    </TouchableWithoutFeedback>
+                </KeyboardAvoidingView>
             </Modal>
         </SafeAreaView>
     );
@@ -349,13 +356,12 @@ const styles = StyleSheet.create({
     modalOverlay: {
         flex: 1,
         backgroundColor: 'rgba(0,0,0,0.5)',
-        justifyContent: 'flex-end',
+        justifyContent: 'center',
+        paddingHorizontal: 16,
     },
     modalContent: {
-        borderTopLeftRadius: 24,
-        borderTopRightRadius: 24,
+        borderRadius: 24,
         padding: 24,
-        paddingBottom: 40,
     },
     modalHeader: {
         flexDirection: 'row',

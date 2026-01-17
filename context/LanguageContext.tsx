@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { translations, Language, TranslationKeys } from '../constants/translations';
+import { translations, Language } from '../constants/translations';
 
 // Recursive type helper to get nested keys (simplified for 2 levels for now, or use lodash get style)
 // For simplicity in this project, we'll define a simple t function type or just use any return for complex nested access if needed.
@@ -24,7 +24,7 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
                 if (savedLanguage === 'en' || savedLanguage === 'ko') {
                     setLanguageState(savedLanguage);
                 }
-            } catch (e) {
+            } catch {
                 console.log('Failed to load language preference');
             }
         };
@@ -35,7 +35,7 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
         setLanguageState(lang);
         try {
             await AsyncStorage.setItem('app_language', lang);
-        } catch (e) {
+        } catch {
             console.log('Failed to save language preference');
         }
     };

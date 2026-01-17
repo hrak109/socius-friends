@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, FlatList, TextInput, Image, Modal, Alert, ActivityIndicator } from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity, FlatList, TextInput, Image, Modal, Alert, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
@@ -249,59 +249,65 @@ export default function FriendsScreen() {
                 animationType="slide"
                 onRequestClose={() => setIsAddModalVisible(false)}
             >
-                <View style={styles.modalOverlay}>
-                    <View style={[styles.modalContent, { backgroundColor: colors.card, shadowColor: colors.shadow }]}>
-                        <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
-                            <Text style={[styles.modalTitle, { color: colors.text }]}>{t('friends.add_friend')}</Text>
-                            <TouchableOpacity onPress={() => setIsAddModalVisible(false)}>
-                                <Ionicons name="close" size={24} color={colors.text} />
-                            </TouchableOpacity>
-                        </View>
-                        <TextInput
-                            style={[styles.modalInput, { backgroundColor: colors.inputBackground, color: colors.text }]}
-                            placeholder={t('friends.search_placeholder')}
-                            placeholderTextColor={colors.textSecondary}
-                            value={searchQuery}
-                            onChangeText={handleSearchUsers}
-                            autoCapitalize="none"
-                        />
-
-                        {isSearching ? (
-                            <ActivityIndicator size="small" color={colors.primary} />
-                        ) : (
-                            <FlatList
-                                data={searchResults}
-                                keyExtractor={item => item.id.toString()}
-                                style={{ maxHeight: 200 }}
-                                renderItem={({ item }) => (
-                                    <View style={[styles.searchItem, { borderBottomColor: colors.border }]}>
-                                        {item.custom_avatar_url && getAvatarSource(item.custom_avatar_url) ? (
-                                            <Image
-                                                source={getAvatarSource(item.custom_avatar_url)}
-                                                style={[styles.listAvatar, { marginRight: 10, width: 40, height: 40, borderRadius: 20 }]}
-                                            />
-                                        ) : null}
-                                        <View style={styles.searchInfo}>
-                                            <Text style={[styles.friendName, { color: colors.text }]}>{item.username}</Text>
-                                        </View>
-                                        <TouchableOpacity
-                                            style={[styles.addButton, { backgroundColor: colors.primary }]}
-                                            onPress={() => sendRequest(item.username)}
-                                        >
-                                            <Text style={[styles.addButtonText, { color: colors.buttonText }]}>{t('friends.add')}</Text>
-                                        </TouchableOpacity>
-                                    </View>
-                                )}
+                <KeyboardAvoidingView
+                    behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                    style={{ flex: 1 }}
+                >
+                    <View style={styles.modalOverlay}>
+                        <View style={[styles.modalContent, { backgroundColor: colors.card, shadowColor: colors.shadow }]}>
+                            <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
+                                <Text style={[styles.modalTitle, { color: colors.text }]}>{t('friends.add_friend')}</Text>
+                                <TouchableOpacity onPress={() => setIsAddModalVisible(false)}>
+                                    <Ionicons name="close" size={24} color={colors.text} />
+                                </TouchableOpacity>
+                            </View>
+                            <TextInput
+                                style={[styles.modalInput, { backgroundColor: colors.inputBackground, color: colors.text }]}
+                                placeholder={t('friends.search_placeholder')}
+                                placeholderTextColor={colors.textSecondary}
+                                value={searchQuery}
+                                onChangeText={handleSearchUsers}
+                                autoCapitalize="none"
                             />
-                        )}
 
-                        <View style={styles.modalButtons}>
-                            <TouchableOpacity onPress={() => setIsAddModalVisible(false)} style={[styles.closeButton, { backgroundColor: colors.inputBackground }]}>
-                                <Text style={[styles.closeButtonText, { color: colors.text }]}>{t('friends.close')}</Text>
-                            </TouchableOpacity>
+                            {isSearching ? (
+                                <ActivityIndicator size="small" color={colors.primary} />
+                            ) : (
+                                <FlatList
+                                    data={searchResults}
+                                    keyExtractor={item => item.id.toString()}
+                                    style={{ maxHeight: 200 }}
+                                    keyboardShouldPersistTaps="handled"
+                                    renderItem={({ item }) => (
+                                        <View style={[styles.searchItem, { borderBottomColor: colors.border }]}>
+                                            {item.custom_avatar_url && getAvatarSource(item.custom_avatar_url) ? (
+                                                <Image
+                                                    source={getAvatarSource(item.custom_avatar_url)}
+                                                    style={[styles.listAvatar, { marginRight: 10, width: 40, height: 40, borderRadius: 20 }]}
+                                                />
+                                            ) : null}
+                                            <View style={styles.searchInfo}>
+                                                <Text style={[styles.friendName, { color: colors.text }]}>{item.username}</Text>
+                                            </View>
+                                            <TouchableOpacity
+                                                style={[styles.addButton, { backgroundColor: colors.primary }]}
+                                                onPress={() => sendRequest(item.username)}
+                                            >
+                                                <Text style={[styles.addButtonText, { color: colors.buttonText }]}>{t('friends.add')}</Text>
+                                            </TouchableOpacity>
+                                        </View>
+                                    )}
+                                />
+                            )}
+
+                            <View style={styles.modalButtons}>
+                                <TouchableOpacity onPress={() => setIsAddModalVisible(false)} style={[styles.closeButton, { backgroundColor: colors.inputBackground }]}>
+                                    <Text style={[styles.closeButtonText, { color: colors.text }]}>{t('friends.close')}</Text>
+                                </TouchableOpacity>
+                            </View>
                         </View>
                     </View>
-                </View>
+                </KeyboardAvoidingView>
             </Modal>
         </SafeAreaView>
     );

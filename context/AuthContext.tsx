@@ -57,7 +57,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                         if (silentUser?.user) {
                             setUser(silentUser.user);
                         }
-                    } catch (e) {
+                    } catch {
                         // Silent sign in failed
                     }
                 }

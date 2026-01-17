@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Text, TextInput, TouchableOpacity, Image, Alert, ScrollView } from 'react-native';
+import { StyleSheet, View, Text, TextInput, TouchableOpacity, Image, Alert, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -160,133 +160,138 @@ export default function ProfileScreen() {
 
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['bottom', 'left', 'right']}>
+            <KeyboardAvoidingView
+                behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                style={{ flex: 1 }}
+                keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 0}
+            >
+                <ScrollView contentContainerStyle={styles.content}>
+                    <View style={[styles.card, { backgroundColor: colors.card, shadowColor: colors.shadow }]}>
+                        {/* Editable Socius Profile Section */}
+                        <Text style={[styles.sectionHeader, { color: colors.text }]}>{t('profile.public_profile')}</Text>
 
-            <ScrollView contentContainerStyle={styles.content}>
-                <View style={[styles.card, { backgroundColor: colors.card, shadowColor: colors.shadow }]}>
-                    {/* Editable Socius Profile Section */}
-                    <Text style={[styles.sectionHeader, { color: colors.text }]}>{t('profile.public_profile')}</Text>
+                        <View style={styles.avatarContainer}>
+                            {selectedAvatar === 'google' && googlePhoto ? (
+                                <Image source={{ uri: googlePhoto }} style={styles.avatar} />
+                            ) : selectedAvatar && PROFILE_AVATARS.find(a => a.id === selectedAvatar) ? (
+                                <Image source={PROFILE_AVATARS.find(a => a.id === selectedAvatar)?.source} style={styles.avatar} />
+                            ) : (
+                                <View style={[styles.avatar, styles.avatarPlaceholder, { backgroundColor: colors.primary }]}>
+                                    <Text style={styles.avatarInitials}>{editName?.charAt(0) || googleName?.charAt(0) || 'U'}</Text>
+                                </View>
+                            )}
+                            <TouchableOpacity style={[styles.editAvatarBtn, { backgroundColor: colors.primary }]} onPress={() => setIsEditing(!isEditing)}>
+                                <Ionicons name="pencil" size={16} color="#fff" />
+                            </TouchableOpacity>
+                        </View>
 
-                    <View style={styles.avatarContainer}>
-                        {selectedAvatar === 'google' && googlePhoto ? (
-                            <Image source={{ uri: googlePhoto }} style={styles.avatar} />
-                        ) : selectedAvatar && PROFILE_AVATARS.find(a => a.id === selectedAvatar) ? (
-                            <Image source={PROFILE_AVATARS.find(a => a.id === selectedAvatar)?.source} style={styles.avatar} />
+                        {isEditing ? (
+                            <View style={styles.editContainer}>
+                                <Text style={[styles.label, { color: colors.textSecondary }]}>{t('profile.display_name')}</Text>
+                                <TextInput
+                                    style={[styles.input, { color: colors.text, backgroundColor: colors.inputBackground || colors.background, borderColor: colors.primary }]}
+                                    value={editName}
+                                    onChangeText={setEditName}
+                                    placeholder={t('profile.edit_display_name_placeholder')}
+                                    placeholderTextColor={colors.textSecondary}
+                                />
+
+                                <Text style={[styles.label, { color: colors.textSecondary, marginTop: 15 }]}>{t('profile.user_id')}</Text>
+                                <TextInput
+                                    style={[styles.input, { color: colors.text, backgroundColor: colors.inputBackground || colors.background, borderColor: colors.primary }]}
+                                    value={editUsername}
+                                    onChangeText={setEditUsername}
+                                    placeholder={t('profile.edit_user_id_placeholder')}
+                                    placeholderTextColor={colors.textSecondary}
+                                    autoCapitalize="none"
+                                />
+
+                                <Text style={[styles.label, { color: colors.textSecondary, marginTop: 15 }]}>{t('profile.choose_avatar')}</Text>
+                                <View style={styles.avatarGrid}>
+                                    {googlePhoto && (
+                                        <TouchableOpacity
+                                            onPress={() => setSelectedAvatar('google')}
+                                            style={[styles.avatarOption, selectedAvatar === 'google' && { borderColor: colors.primary, borderWidth: 2 }]}
+                                        >
+                                            <Image source={{ uri: googlePhoto }} style={styles.avatarOptionImg} />
+                                        </TouchableOpacity>
+                                    )}
+                                    {PROFILE_AVATARS.map((avatar) => (
+                                        <TouchableOpacity
+                                            key={avatar.id}
+                                            onPress={() => setSelectedAvatar(avatar.id)}
+                                            style={[styles.avatarOption, selectedAvatar === avatar.id && { borderColor: colors.primary, borderWidth: 2 }]}
+                                        >
+                                            <Image source={avatar.source} style={styles.avatarOptionImg} />
+                                        </TouchableOpacity>
+                                    ))}
+                                </View>
+
+                                <View style={styles.buttonRow}>
+                                    <TouchableOpacity style={[styles.actionSaveButton, { backgroundColor: colors.primary }]} onPress={handleSave}>
+                                        <Text style={styles.buttonText}>{t('common.save')}</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity style={[styles.actionCancelButton, { backgroundColor: colors.border }]} onPress={() => { setIsEditing(false); setEditName(displayName || googleName || ''); setEditUsername(username || ''); }}>
+                                        <Text style={styles.buttonText}>{t('common.cancel')}</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            </View>
                         ) : (
-                            <View style={[styles.avatar, styles.avatarPlaceholder, { backgroundColor: colors.primary }]}>
-                                <Text style={styles.avatarInitials}>{editName?.charAt(0) || googleName?.charAt(0) || 'U'}</Text>
+                            <View style={{ alignItems: 'center' }}>
+                                <Text style={[styles.name, { color: colors.text }]}>{displayName || googleName || 'User'}</Text>
+                                {username && <Text style={[styles.username, { color: colors.textSecondary }]}>@{username}</Text>}
+                                <TouchableOpacity onPress={() => setIsEditing(true)}>
+                                    <Text style={{ color: colors.primary, marginTop: 5 }}>{t('profile.edit_profile')}</Text>
+                                </TouchableOpacity>
                             </View>
                         )}
-                        <TouchableOpacity style={[styles.editAvatarBtn, { backgroundColor: colors.primary }]} onPress={() => setIsEditing(!isEditing)}>
-                            <Ionicons name="pencil" size={16} color="#fff" />
-                        </TouchableOpacity>
-                    </View>
 
-                    {isEditing ? (
-                        <View style={styles.editContainer}>
-                            <Text style={[styles.label, { color: colors.textSecondary }]}>{t('profile.display_name')}</Text>
-                            <TextInput
-                                style={[styles.input, { color: colors.text, backgroundColor: colors.inputBackground || colors.background, borderColor: colors.primary }]}
-                                value={editName}
-                                onChangeText={setEditName}
-                                placeholder={t('profile.edit_display_name_placeholder')}
-                                placeholderTextColor={colors.textSecondary}
-                            />
+                        <View style={[styles.divider, { backgroundColor: colors.border, marginVertical: 20 }]} />
 
-                            <Text style={[styles.label, { color: colors.textSecondary, marginTop: 15 }]}>{t('profile.user_id')}</Text>
-                            <TextInput
-                                style={[styles.input, { color: colors.text, backgroundColor: colors.inputBackground || colors.background, borderColor: colors.primary }]}
-                                value={editUsername}
-                                onChangeText={setEditUsername}
-                                placeholder={t('profile.edit_user_id_placeholder')}
-                                placeholderTextColor={colors.textSecondary}
-                                autoCapitalize="none"
-                            />
+                        {/* Read-Only Google Info */}
+                        <Text style={[styles.sectionHeader, { color: colors.text, marginBottom: 15 }]}>{t('profile.google_account')}</Text>
+                        <View style={styles.googleInfoRow}>
+                            {googlePhoto && <Image source={{ uri: googlePhoto }} style={styles.googleAvatar} />}
+                            <View>
+                                <Text style={[styles.googleName, { color: colors.text }]}>{googleName}</Text>
+                                <Text style={[styles.email, { color: colors.textSecondary }]}>{email}</Text>
+                            </View>
+                        </View>
 
-                            <Text style={[styles.label, { color: colors.textSecondary, marginTop: 15 }]}>{t('profile.choose_avatar')}</Text>
-                            <View style={styles.avatarGrid}>
-                                {googlePhoto && (
-                                    <TouchableOpacity
-                                        onPress={() => setSelectedAvatar('google')}
-                                        style={[styles.avatarOption, selectedAvatar === 'google' && { borderColor: colors.primary, borderWidth: 2 }]}
-                                    >
-                                        <Image source={{ uri: googlePhoto }} style={styles.avatarOptionImg} />
+                        {/* Custom Avatar Upload */}
+                        <Text style={[styles.sectionHeader, { color: colors.text, marginBottom: 15, marginTop: 20 }]}>{t('profile.custom_photo')}</Text>
+                        <View style={styles.uploadRow}>
+                            {customAvatarUrl ? (
+                                <Image source={{ uri: customAvatarUrl }} style={styles.customAvatarPreview} />
+                            ) : (
+                                <View style={[styles.customAvatarPreview, { backgroundColor: colors.border, justifyContent: 'center', alignItems: 'center' }]}>
+                                    <Ionicons name="person" size={30} color={colors.textSecondary} />
+                                </View>
+                            )}
+                            <View style={styles.uploadButtons}>
+                                <TouchableOpacity style={[styles.uploadBtn, { backgroundColor: colors.primary }]} onPress={handlePickImage}>
+                                    <Text style={styles.buttonText}>{t('profile.upload_photo')}</Text>
+                                </TouchableOpacity>
+                                {customAvatarUrl && (
+                                    <TouchableOpacity style={[styles.removeBtn, { backgroundColor: '#FF3B30' }]} onPress={handleRemoveCustomAvatar}>
+                                        <Text style={styles.buttonText}>{t('profile.remove_photo')}</Text>
                                     </TouchableOpacity>
                                 )}
-                                {PROFILE_AVATARS.map((avatar) => (
-                                    <TouchableOpacity
-                                        key={avatar.id}
-                                        onPress={() => setSelectedAvatar(avatar.id)}
-                                        style={[styles.avatarOption, selectedAvatar === avatar.id && { borderColor: colors.primary, borderWidth: 2 }]}
-                                    >
-                                        <Image source={avatar.source} style={styles.avatarOptionImg} />
-                                    </TouchableOpacity>
-                                ))}
                             </View>
-
-                            <View style={styles.buttonRow}>
-                                <TouchableOpacity style={[styles.actionSaveButton, { backgroundColor: colors.primary }]} onPress={handleSave}>
-                                    <Text style={styles.buttonText}>{t('common.save')}</Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity style={[styles.actionCancelButton, { backgroundColor: colors.border }]} onPress={() => { setIsEditing(false); setEditName(displayName || googleName || ''); setEditUsername(username || ''); }}>
-                                    <Text style={styles.buttonText}>{t('common.cancel')}</Text>
-                                </TouchableOpacity>
-                            </View>
-                        </View>
-                    ) : (
-                        <View style={{ alignItems: 'center' }}>
-                            <Text style={[styles.name, { color: colors.text }]}>{displayName || googleName || 'User'}</Text>
-                            {username && <Text style={[styles.username, { color: colors.textSecondary }]}>@{username}</Text>}
-                            <TouchableOpacity onPress={() => setIsEditing(true)}>
-                                <Text style={{ color: colors.primary, marginTop: 5 }}>{t('profile.edit_profile')}</Text>
-                            </TouchableOpacity>
-                        </View>
-                    )}
-
-                    <View style={[styles.divider, { backgroundColor: colors.border, marginVertical: 20 }]} />
-
-                    {/* Read-Only Google Info */}
-                    <Text style={[styles.sectionHeader, { color: colors.text, marginBottom: 15 }]}>{t('profile.google_account')}</Text>
-                    <View style={styles.googleInfoRow}>
-                        {googlePhoto && <Image source={{ uri: googlePhoto }} style={styles.googleAvatar} />}
-                        <View>
-                            <Text style={[styles.googleName, { color: colors.text }]}>{googleName}</Text>
-                            <Text style={[styles.email, { color: colors.textSecondary }]}>{email}</Text>
                         </View>
                     </View>
 
-                    {/* Custom Avatar Upload */}
-                    <Text style={[styles.sectionHeader, { color: colors.text, marginBottom: 15, marginTop: 20 }]}>{t('profile.custom_photo')}</Text>
-                    <View style={styles.uploadRow}>
-                        {customAvatarUrl ? (
-                            <Image source={{ uri: customAvatarUrl }} style={styles.customAvatarPreview} />
-                        ) : (
-                            <View style={[styles.customAvatarPreview, { backgroundColor: colors.border, justifyContent: 'center', alignItems: 'center' }]}>
-                                <Ionicons name="person" size={30} color={colors.textSecondary} />
-                            </View>
-                        )}
-                        <View style={styles.uploadButtons}>
-                            <TouchableOpacity style={[styles.uploadBtn, { backgroundColor: colors.primary }]} onPress={handlePickImage}>
-                                <Text style={styles.buttonText}>{t('profile.upload_photo')}</Text>
-                            </TouchableOpacity>
-                            {customAvatarUrl && (
-                                <TouchableOpacity style={[styles.removeBtn, { backgroundColor: '#FF3B30' }]} onPress={handleRemoveCustomAvatar}>
-                                    <Text style={styles.buttonText}>{t('profile.remove_photo')}</Text>
-                                </TouchableOpacity>
-                            )}
-                        </View>
-                    </View>
-                </View>
 
+                    <TouchableOpacity
+                        style={[styles.signOutButton, { backgroundColor: colors.card, shadowColor: colors.shadow }]}
+                        onPress={handleSignOut}
+                    >
+                        <Ionicons name="log-out-outline" size={24} color={'#FF3B30'} style={{ marginRight: 10 }} />
+                        <Text style={[styles.signOutText, { color: '#FF3B30' }]}>{t('settings.sign_out')}</Text>
+                    </TouchableOpacity>
 
-                <TouchableOpacity
-                    style={[styles.signOutButton, { backgroundColor: colors.card, shadowColor: colors.shadow }]}
-                    onPress={handleSignOut}
-                >
-                    <Ionicons name="log-out-outline" size={24} color={'#FF3B30'} style={{ marginRight: 10 }} />
-                    <Text style={[styles.signOutText, { color: '#FF3B30' }]}>{t('settings.sign_out')}</Text>
-                </TouchableOpacity>
-
-            </ScrollView>
+                </ScrollView>
+            </KeyboardAvoidingView>
         </SafeAreaView>
     );
 }

@@ -1,11 +1,11 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useRef } from 'react';
-import { AppState, AppStateStatus, Platform, Alert } from 'react-native';
+import { AppState, AppStateStatus, Platform } from 'react-native';
 import * as Device from 'expo-device';
 import api from '../services/api';
 import { useSession } from './AuthContext';
 import * as Notifications from 'expo-notifications';
 import { createNotificationStream, closeNotificationStream } from '../services/eventSource';
-import { router, useSegments } from 'expo-router';
+import { router } from 'expo-router';
 
 interface NotificationContextType {
     unreadCount: number;
@@ -17,6 +17,8 @@ interface NotificationContextType {
     lastDM: { id: number; senderId: number; content: string; timestamp: number } | null;
     refreshNotifications: () => Promise<void>;
     setRouteSegments: (segments: string[]) => void;
+    typingThreads: Set<string>;
+    setTyping: (id: string, isTyping: boolean) => void;
 }
 
 const NotificationContext = createContext<NotificationContextType>({
@@ -29,6 +31,8 @@ const NotificationContext = createContext<NotificationContextType>({
     lastDM: null,
     refreshNotifications: async () => { },
     setRouteSegments: () => { },
+    typingThreads: new Set(),
+    setTyping: () => { },
 });
 
 export const useNotifications = () => useContext(NotificationContext);
@@ -42,11 +46,24 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     const [lastNotificationTime, setLastNotificationTime] = useState<Date | null>(null);
     const [lastMessage, setLastMessage] = useState<{ id: number; context: string; content: string; timestamp: number } | null>(null);
     const [lastDM, setLastDM] = useState<{ id: number; senderId: number; content: string; timestamp: number } | null>(null);
+    const [typingThreads, setTypingThreads] = useState<Set<string>>(new Set());
     const sseCleanupRef = useRef<(() => void) | null>(null);
     const segmentsRef = useRef<string[]>([]);
 
     const setRouteSegments = useCallback((segments: string[]) => {
         segmentsRef.current = segments;
+    }, []);
+
+    const setTyping = useCallback((id: string, isTyping: boolean) => {
+        setTypingThreads(prev => {
+            const newSet = new Set(prev);
+            if (isTyping) {
+                newSet.add(id);
+            } else {
+                newSet.delete(id);
+            }
+            return newSet;
+        });
     }, []);
 
     const refreshNotifications = useCallback(async () => {
@@ -63,7 +80,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
             setUnreadDirectMessages(messages);
             setFriendRequests(friends);
             await Notifications.setBadgeCountAsync(total);
-        } catch (error) {
+        } catch {
             console.log('Failed to fetch notifications');
         }
     }, [session]);
@@ -106,7 +123,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
         } catch (e: any) {
             console.error('Error fetching push token:', e);
         }
-    }, [session]);
+    }, []);
 
     const handleNotificationResponse = useCallback((response: Notifications.NotificationResponse) => {
         const url = response.notification.request.content.data?.url as string | undefined;
@@ -148,6 +165,17 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
                     (event) => {
                         if (event.type === 'message') {
                             // New Socius message arrived
+                            const context = event.data?.context;
+                            if (context) {
+                                // Clear typing status for this thread
+                                setTyping(context, false);
+
+                                // Also handle full ID if it starts with socius-
+                                if (event.data?.sender_id) {
+                                    setTyping(`socius-${event.data.sender_id}`, false);
+                                }
+                            }
+
                             setLastNotificationTime(new Date());
                             setLastMessage({
                                 id: event.data?.id || Date.now(),
@@ -180,9 +208,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
             };
 
             setupSSE();
-            if (Platform.OS !== 'ios') {
-                registerForPushNotifications();
-            }
+            registerForPushNotifications();
 
             // App state handling for reconnection
             const handleAppStateChange = (nextAppState: AppStateStatus) => {
@@ -238,7 +264,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
                 closeNotificationStream();
             };
         }
-    }, [session, refreshNotifications]);
+    }, [session, refreshNotifications, handleNotificationResponse, registerForPushNotifications]);
 
     return (
         <NotificationContext.Provider value={{
@@ -250,7 +276,9 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
             lastMessage,
             lastDM,
             refreshNotifications,
-            setRouteSegments
+            setRouteSegments,
+            typingThreads,
+            setTyping
         }}>
             {children}
         </NotificationContext.Provider>
