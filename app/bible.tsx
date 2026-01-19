@@ -634,7 +634,7 @@ export default function BibleScreen() {
     if (isLoading) {
         return (
             <SafeAreaView style={[styles.container, { backgroundColor: colors.background, justifyContent: 'center', alignItems: 'center' }]}>
-                <Stack.Screen options={{ headerShown: false, gestureEnabled: false }} />
+                <Stack.Screen options={{ headerShown: false, gestureEnabled: true }} />
                 <ActivityIndicator size="large" color={colors.primary} />
             </SafeAreaView>
         );
@@ -642,7 +642,7 @@ export default function BibleScreen() {
 
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-            <Stack.Screen options={{ title: t('bible.title'), headerBackTitle: t('common.back'), gestureEnabled: false }} />
+            <Stack.Screen options={{ title: t('bible.title'), headerBackTitle: t('common.back'), gestureEnabled: true }} />
 
             {/* Animated Header that hides on scroll */}
             <Animated.View style={[
