@@ -9,13 +9,15 @@ export default function ChatScreen() {
     const router = useRouter();
     const { colors } = useTheme();
     const { t } = useLanguage();
-    const { id, type, name, avatar, sociusRole } = useLocalSearchParams<{
+    const params = useLocalSearchParams<{
         id: string;
         type: string;
         name: string;
         avatar: string;
         sociusRole?: string;
+        initialText?: string;
     }>();
+    const { id, type, name, avatar, sociusRole, initialText } = params;
 
     // Determine context based on type
     const isSocius = type === 'socius';
@@ -89,6 +91,7 @@ export default function ChatScreen() {
                 }}
             />
             <ChatInterface
+                key={`${id}-${params.initialText || ''}`}
                 context={context}
                 friendId={friendId}
                 companionId={companionId}
@@ -96,6 +99,7 @@ export default function ChatScreen() {
                 friendName={name}
                 friendAvatar={avatar}
                 showHeader={false}
+                initialMessage={id.startsWith('socius-') ? (initialText as string) : undefined}
             />
         </>
     );

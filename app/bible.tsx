@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, ScrollView, Modal, FlatList, ActivityIndicator, Alert, TextInput, Keyboard, Animated, NativeSyntheticEvent, NativeScrollEvent, Platform } from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity, ScrollView, Modal, FlatList, ActivityIndicator, Alert, TextInput, Keyboard, Animated, NativeSyntheticEvent, NativeScrollEvent, Platform, Dimensions } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Stack, useRouter } from 'expo-router';
@@ -16,6 +16,8 @@ import AppSpecificChatHead from '../components/AppSpecificChatHead';
 import niv from '../constants/bible/niv.json';
 import saebunyeok from '../constants/bible/saebunyeok.json';
 import gaeyeok from '../constants/bible/gaeyeok.json';
+
+import api from '../services/api';
 
 type Book = {
     name: string;
@@ -53,6 +55,8 @@ export default function BibleScreen() {
     const [selectedVerse, setSelectedVerse] = useState<number | null>(null);
     const [highlights, setHighlights] = useState<number[]>([]);
     const [isActionModalVisible, setIsActionModalVisible] = useState(false);
+    const [modalPosition, setModalPosition] = useState<{ x: number; y: number; isTop: boolean }>({ x: 0, y: 0, isTop: false });
+    const [christianFriend, setChristianFriend] = useState<any>(null);
     const [isZoomControlsVisible, setIsZoomControlsVisible] = useState(false); // New State
 
     // UI State
@@ -283,6 +287,7 @@ export default function BibleScreen() {
     // Persistence Logic
     useEffect(() => {
         loadProgress();
+        loadChristianFriend();
     }, []);
 
     useEffect(() => {
@@ -447,6 +452,46 @@ export default function BibleScreen() {
         setIsActionModalVisible(false);
         setSelectedVerse(null);
         Alert.alert(t('common.success'), t('bible.copy_success') || 'Copied to clipboard');
+    };
+
+    const loadChristianFriend = async () => {
+        try {
+            const response = await api.get(`/friends/socius?_t=${Date.now()}`);
+            const companions = response.data || [];
+            const friend = companions.find((c: any) => c.role === 'christian');
+            setChristianFriend(friend);
+        } catch (error) {
+            console.log('Failed to load Christian friend', error);
+        }
+    };
+
+    const handleAskSocius = () => {
+        if (selectedVerse === null || !currentChapter[selectedVerse]) return;
+
+        const verseText = currentChapter[selectedVerse];
+        const reference = `${currentBook?.name} ${selectedChapterIndex + 1}:${selectedVerse + 1}`;
+        const query = `${reference} - "${verseText}"`;
+
+        setIsActionModalVisible(false);
+        setSelectedVerse(null);
+
+        if (christianFriend) {
+            router.push({
+                pathname: '/chat/[id]',
+                params: {
+                    id: `socius-${christianFriend.id}`,
+                    type: 'socius',
+                    name: christianFriend.name,
+                    avatar: christianFriend.avatar,
+                    sociusRole: christianFriend.role,
+                    initialText: query
+                }
+            } as any);
+        } else {
+            // Fallback if friend not loaded - maybe just go to generic chat or show alert?
+            // For now, try to go to socius-default but with context
+            Alert.alert(t('common.error'), 'Socius friend not ready. Please try again.');
+        }
     };
 
     // Derived State
@@ -760,7 +805,18 @@ export default function BibleScreen() {
                                 styles.verseContainer,
                                 highlights.includes(idx) && { backgroundColor: isDark ? 'rgba(255, 255, 0, 0.2)' : 'rgba(255, 255, 0, 0.3)', padding: 5, borderRadius: 5 }
                             ]}
-                            onPress={() => {
+                            activeOpacity={0.6}
+                            onPress={(e) => {
+                                const { pageY, locationX, locationY } = e.nativeEvent;
+                                // Simple logic: if click is in top 60% of screen, show below. Else show above.
+                                const screenHeight = Dimensions.get('window').height;
+                                const isTop = pageY < screenHeight * 0.6;
+
+                                setModalPosition({
+                                    x: 20, // Constant left margin
+                                    y: isTop ? pageY + 10 : pageY - 10,
+                                    isTop
+                                });
                                 setSelectedVerse(idx);
                                 setIsActionModalVisible(true);
                             }}
@@ -808,7 +864,6 @@ export default function BibleScreen() {
             {renderNavModal()}
             {renderZoomControls()}
 
-            {/* Action Modal */}
             <Modal
                 transparent={true}
                 visible={isActionModalVisible}
@@ -820,18 +875,32 @@ export default function BibleScreen() {
                     activeOpacity={1}
                     onPress={() => setIsActionModalVisible(false)}
                 >
-                    <View style={[styles.actionSheet, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                        <TouchableOpacity style={styles.actionItem} onPress={handleCopy}>
-                            <Ionicons name="copy-outline" size={24} color={colors.text} />
-                            <Text style={[styles.actionText, { color: colors.text }]}>{t('bible.copy')}</Text>
+                    <View style={[
+                        styles.bubbleMenu,
+                        {
+                            backgroundColor: colors.card,
+                            borderColor: colors.border,
+                            top: modalPosition.isTop ? modalPosition.y : undefined,
+                            bottom: !modalPosition.isTop ? (Dimensions.get('window').height - modalPosition.y) : undefined,
+                        }
+                    ]}>
+                        <TouchableOpacity style={styles.bubbleMenuItem} onPress={handleAskSocius}>
+                            <Ionicons name="chatbubble-ellipses-outline" size={20} color={colors.primary} />
+                            <Text style={[styles.bubbleMenuText, { color: colors.text }]}>{t('bible.ask_socius') || 'Ask Socius'}</Text>
                         </TouchableOpacity>
-                        <TouchableOpacity style={styles.actionItem} onPress={toggleHighlight}>
+                        <View style={[styles.bubbleDivider, { backgroundColor: colors.border }]} />
+                        <TouchableOpacity style={styles.bubbleMenuItem} onPress={handleCopy}>
+                            <Ionicons name="copy-outline" size={20} color={colors.text} />
+                            <Text style={[styles.bubbleMenuText, { color: colors.text }]}>{t('bible.copy')}</Text>
+                        </TouchableOpacity>
+                        <View style={[styles.bubbleDivider, { backgroundColor: colors.border }]} />
+                        <TouchableOpacity style={styles.bubbleMenuItem} onPress={toggleHighlight}>
                             <Ionicons
                                 name={selectedVerse !== null && highlights.includes(selectedVerse) ? "color-wand" : "color-wand-outline"}
-                                size={24}
+                                size={20}
                                 color={colors.text}
                             />
-                            <Text style={[styles.actionText, { color: colors.text }]}>
+                            <Text style={[styles.bubbleMenuText, { color: colors.text }]}>
                                 {selectedVerse !== null && highlights.includes(selectedVerse) ? t('bible.unhighlight') : t('bible.highlight')}
                             </Text>
                         </TouchableOpacity>
@@ -865,6 +934,41 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.2,
         shadowRadius: 8,
         elevation: 5,
+    },
+    bubbleMenu: {
+        position: 'absolute',
+        left: 20,
+        right: 20, // Full width minus margins
+        borderRadius: 16,
+        padding: 0,
+        backgroundColor: 'white',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.25,
+        shadowRadius: 10,
+        elevation: 8,
+        borderWidth: 1,
+        flexDirection: 'row',
+        zIndex: 1000,
+        alignItems: 'center',
+        justifyContent: 'space-between', // Try to distribute evenly or custom
+    },
+    bubbleMenuItem: {
+        flex: 1,
+        flexDirection: 'row', // Icon + Text layout
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 14,
+        gap: 6,
+    },
+    bubbleMenuText: {
+        fontSize: 14,
+        fontWeight: '600',
+    },
+    bubbleDivider: {
+        width: 1,
+        height: '60%',
+        backgroundColor: '#eee',
     },
     actionItem: {
         alignItems: 'center',
@@ -1087,6 +1191,8 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.2,
         shadowRadius: 12,
         elevation: 8,
+        alignItems: 'center',
+        justifyContent: 'center',
     },
     chapterTouchable: {
         paddingHorizontal: 12,
@@ -1166,6 +1272,7 @@ const styles = StyleSheet.create({
         fontSize: 14,
         fontWeight: '500',
     },
+
     blurContainerExpanded: {
         flexDirection: 'row',
         alignItems: 'center',

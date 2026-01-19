@@ -67,10 +67,22 @@ export function useCalories() {
         }
     }, [entries]);
 
+    const updateEntry = useCallback(async (id: string, food: string, calories: number) => {
+        try {
+            const updated = entries.map(e => e.id === id ? { ...e, food, calories } : e);
+            await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+            setEntries(updated);
+        } catch (error) {
+            console.error('Failed to update calorie entry', error);
+            throw error;
+        }
+    }, [entries]);
+
     return {
         entries,
         loading,
         addEntry,
+        updateEntry,
         deleteEntry,
         refresh: loadEntries
     };

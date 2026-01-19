@@ -13,11 +13,12 @@ export default function CaloriesScreen() {
     const { t } = useLanguage();
 
     // Use Shared Hook
-    const { entries, loading, addEntry, deleteEntry } = useCalories();
+    const { entries, loading, addEntry, updateEntry, deleteEntry } = useCalories();
 
     const [modalVisible, setModalVisible] = useState(false);
 
     // Form state
+    const [editingEntry, setEditingEntry] = useState<CalorieEntry | null>(null);
     const [food, setFood] = useState('');
     const [calories, setCalories] = useState('');
 
@@ -33,14 +34,26 @@ export default function CaloriesScreen() {
         }
 
         try {
-            await addEntry(food.trim(), calNum);
+            if (editingEntry) {
+                await updateEntry(editingEntry.id, food.trim(), calNum);
+            } else {
+                await addEntry(food.trim(), calNum);
+            }
             // Reset and close
             setFood('');
             setCalories('');
+            setEditingEntry(null);
             setModalVisible(false);
         } catch (e) {
             Alert.alert(t('common.error'), 'Failed to save entry');
         }
+    };
+
+    const handleEdit = (entry: CalorieEntry) => {
+        setEditingEntry(entry);
+        setFood(entry.food);
+        setCalories(entry.calories.toString());
+        setModalVisible(true);
     };
 
     const handleDelete = (id: string) => {
@@ -92,20 +105,27 @@ export default function CaloriesScreen() {
                         </Text>
                     </View>
                 )}
-                <TouchableOpacity
-                    style={[styles.entryItem, { borderBottomColor: colors.border }]}
-                    onLongPress={() => handleDelete(item.id)}
-                >
+                <View style={[styles.entryItem, { borderBottomColor: colors.border }]}>
                     <View style={styles.entryLeft}>
                         <Text style={[styles.entryFood, { color: colors.text }]}>{item.food}</Text>
                         <Text style={[styles.entryTime, { color: colors.textSecondary }]}>
                             {new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </Text>
                     </View>
-                    <Text style={[styles.entryCalories, { color: colors.primary }]}>
-                        {item.calories}
-                    </Text>
-                </TouchableOpacity>
+                    <View style={styles.entryRight}>
+                        <Text style={[styles.entryCalories, { color: colors.primary }]}>
+                            {item.calories}
+                        </Text>
+                        <View style={styles.actionButtons}>
+                            <TouchableOpacity onPress={() => handleEdit(item)} style={styles.actionButton}>
+                                <Ionicons name="pencil" size={20} color={colors.textSecondary} />
+                            </TouchableOpacity>
+                            <TouchableOpacity onPress={() => handleDelete(item.id)} style={styles.actionButton}>
+                                <Ionicons name="trash-outline" size={20} color={colors.error || '#FF3B30'} />
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
             </View>
         );
     };
@@ -122,18 +142,21 @@ export default function CaloriesScreen() {
 
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-            <Stack.Screen options={{ headerShown: false }} />
-
-            {/* Header */}
-            <View style={[styles.header, { borderBottomColor: colors.border }]}>
-                <TouchableOpacity onPress={() => { }} style={{ opacity: 0 }}>
-                    <Ionicons name="menu" size={24} color={colors.text} />
-                </TouchableOpacity>
-                <Text style={[styles.headerTitle, { color: colors.text }]}>{t('home.calories')}</Text>
-                <TouchableOpacity onPress={() => setModalVisible(true)}>
-                    <Ionicons name="add-circle" size={28} color={colors.primary} />
-                </TouchableOpacity>
-            </View>
+            <Stack.Screen
+                options={{
+                    headerShown: true,
+                    title: t('calories.title'),
+                    headerShadowVisible: false,
+                    headerStyle: { backgroundColor: colors.background },
+                    headerTitleStyle: { color: colors.text, fontWeight: '600' },
+                    headerTintColor: colors.primary,
+                    headerRight: () => (
+                        <TouchableOpacity onPress={() => setModalVisible(true)} style={{ paddingRight: 8 }}>
+                            <Ionicons name="add-circle" size={28} color={colors.primary} />
+                        </TouchableOpacity>
+                    ),
+                }}
+            />
 
             {/* Stats Card */}
             <View style={styles.statsContainer}>
@@ -177,7 +200,12 @@ export default function CaloriesScreen() {
                 animationType="slide"
                 transparent={true}
                 visible={modalVisible}
-                onRequestClose={() => setModalVisible(false)}
+                onRequestClose={() => {
+                    setModalVisible(false);
+                    setEditingEntry(null);
+                    setFood('');
+                    setCalories('');
+                }}
             >
                 <KeyboardAvoidingView
                     behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -189,8 +217,15 @@ export default function CaloriesScreen() {
 
                     <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
                         <View style={styles.modalHeader}>
-                            <Text style={[styles.modalTitle, { color: colors.text }]}>{t('calories.add_entry')}</Text>
-                            <TouchableOpacity onPress={() => setModalVisible(false)}>
+                            <Text style={[styles.modalTitle, { color: colors.text }]}>
+                                {editingEntry ? t('calories.edit_entry') : t('calories.add_entry')}
+                            </Text>
+                            <TouchableOpacity onPress={() => {
+                                setModalVisible(false);
+                                setEditingEntry(null);
+                                setFood('');
+                                setCalories('');
+                            }}>
                                 <Ionicons name="close" size={24} color={colors.textSecondary} />
                             </TouchableOpacity>
                         </View>
@@ -219,7 +254,9 @@ export default function CaloriesScreen() {
                             style={[styles.modalAddButton, { backgroundColor: colors.primary }]}
                             onPress={handleAddEntry}
                         >
-                            <Text style={styles.modalAddButtonText}>{t('common.add')}</Text>
+                            <Text style={styles.modalAddButtonText}>
+                                {editingEntry ? t('calories.update') : t('common.add')}
+                            </Text>
                         </TouchableOpacity>
                     </View>
                 </KeyboardAvoidingView>
@@ -285,6 +322,9 @@ const styles = StyleSheet.create({
     entryFood: { fontSize: 16, fontWeight: '500', marginBottom: 2 },
     entryTime: { fontSize: 12 },
     entryCalories: { fontSize: 18, fontWeight: 'bold' },
+    entryRight: { flexDirection: 'row', alignItems: 'center', gap: 15 },
+    actionButtons: { flexDirection: 'row', gap: 10, marginLeft: 10 },
+    actionButton: { padding: 4 },
     emptyContainer: {
         flex: 1,
         alignItems: 'center',

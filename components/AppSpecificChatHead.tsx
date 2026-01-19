@@ -231,7 +231,7 @@ export default function AppSpecificChatHead({ roleType, appContext }: AppSpecifi
         return t(descKey) || '';
     };
 
-    if (loading || !isLoaded) return null;
+    if (!isLoaded) return null;
 
     const roleInfo = ROLE_INFO[roleType];
 

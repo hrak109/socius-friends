@@ -3,8 +3,7 @@ import { StyleSheet, View, Text, TextInput, TouchableOpacity, Image, Alert, Scro
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import api, { uploadAvatar, deleteAvatar } from '../services/api';
-import * as ImagePicker from 'expo-image-picker';
+import api from '../services/api';
 import { useSession } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -30,7 +29,7 @@ export default function ProfileScreen() {
     const [googlePhoto, setGooglePhoto] = useState<string | null>(null);
     const [googleName, setGoogleName] = useState<string | null>(null);
     const [email, setEmail] = useState('');
-    const [customAvatarUrl, setCustomAvatarUrl] = useState<string | null>(null);
+
 
     useEffect(() => {
         loadGoogleProfile();
@@ -72,12 +71,7 @@ export default function ProfileScreen() {
                 setUsername(res.data.username);
                 setEditUsername(res.data.username);
             }
-            if (res.data.custom_avatar_url) {
-                const url = res.data.custom_avatar_url.startsWith('http')
-                    ? res.data.custom_avatar_url
-                    : `${api.defaults.baseURL?.replace('/api/socius', '')}${res.data.custom_avatar_url}`;
-                setCustomAvatarUrl(url);
-            }
+
         } catch {
             console.log('Failed to load backend profile');
         }
@@ -87,40 +81,7 @@ export default function ProfileScreen() {
         loadBackendProfile();
     }, []);
 
-    const handlePickImage = async () => {
-        const result = await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: ImagePicker.MediaTypeOptions.Images,
-            allowsEditing: true,
-            aspect: [1, 1],
-            quality: 0.5,
-        });
 
-        if (!result.canceled) {
-            try {
-                const res = await uploadAvatar(result.assets[0].uri);
-                const url = res.url.startsWith('http')
-                    ? res.url
-                    : `${api.defaults.baseURL?.replace('/api/socius', '')}${res.url}`;
-                setCustomAvatarUrl(url);
-
-                // If we uploaded a custom avatar, we might want to set 'custom' as avatarId if supported,
-                // or just rely on backend preferring custom_avatar_url.
-                // For now, we mainly upload it.
-                Alert.alert(t('common.success'), t('profile.avatar_uploaded'));
-            } catch {
-                Alert.alert(t('common.error'), t('profile.avatar_upload_failed'));
-            }
-        }
-    };
-
-    const handleRemoveCustomAvatar = async () => {
-        try {
-            await deleteAvatar();
-            setCustomAvatarUrl(null);
-        } catch {
-            Alert.alert(t('common.error'), t('profile.avatar_remove_failed'));
-        }
-    };
 
     const handleSave = async () => {
         if (!editName.trim()) {
@@ -258,27 +219,7 @@ export default function ProfileScreen() {
                             </View>
                         </View>
 
-                        {/* Custom Avatar Upload */}
-                        <Text style={[styles.sectionHeader, { color: colors.text, marginBottom: 15, marginTop: 20 }]}>{t('profile.custom_photo')}</Text>
-                        <View style={styles.uploadRow}>
-                            {customAvatarUrl ? (
-                                <Image source={{ uri: customAvatarUrl }} style={styles.customAvatarPreview} />
-                            ) : (
-                                <View style={[styles.customAvatarPreview, { backgroundColor: colors.border, justifyContent: 'center', alignItems: 'center' }]}>
-                                    <Ionicons name="person" size={30} color={colors.textSecondary} />
-                                </View>
-                            )}
-                            <View style={styles.uploadButtons}>
-                                <TouchableOpacity style={[styles.uploadBtn, { backgroundColor: colors.primary }]} onPress={handlePickImage}>
-                                    <Text style={styles.buttonText}>{t('profile.upload_photo')}</Text>
-                                </TouchableOpacity>
-                                {customAvatarUrl && (
-                                    <TouchableOpacity style={[styles.removeBtn, { backgroundColor: '#FF3B30' }]} onPress={handleRemoveCustomAvatar}>
-                                        <Text style={styles.buttonText}>{t('profile.remove_photo')}</Text>
-                                    </TouchableOpacity>
-                                )}
-                            </View>
-                        </View>
+
                     </View>
 
 

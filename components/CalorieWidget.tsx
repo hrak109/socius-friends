@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, TextInput, ActivityIndicator } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useCalories } from '../hooks/useCalories';
@@ -13,10 +14,14 @@ type CalorieOption = {
 type CalorieWidgetProps = {
     food: string;
     options: CalorieOption[];
+    messageId?: string | number; // For persistence
     onLogged?: () => void;
 };
 
-export default function CalorieWidget({ food, options, onLogged }: CalorieWidgetProps) {
+// Global cache for instant feedback
+const LOGGED_CACHE = new Map<string, boolean>();
+
+export default function CalorieWidget({ food, options, messageId, onLogged }: CalorieWidgetProps) {
     const { colors } = useTheme();
     const { t } = useLanguage();
     const { addEntry } = useCalories();
@@ -26,11 +31,43 @@ export default function CalorieWidget({ food, options, onLogged }: CalorieWidget
     const [customCalories, setCustomCalories] = useState('');
     const [showCustom, setShowCustom] = useState(false);
 
+    // Check persistence
+    useEffect(() => {
+        const checkStatus = async () => {
+            if (!messageId) return;
+
+            // Check memory cache first
+            if (LOGGED_CACHE.has(String(messageId))) {
+                setLogged(true);
+                return;
+            }
+
+            try {
+                const key = `calorie_logged_${messageId}`;
+                const status = await AsyncStorage.getItem(key);
+                if (status === 'true') {
+                    setLogged(true);
+                    LOGGED_CACHE.set(String(messageId), true);
+                }
+            } catch (e) {
+                // Ignore
+            }
+        };
+        checkStatus();
+    }, [messageId]);
+
     const handleLog = async (calories: number) => {
         setLoading(true);
         try {
             await addEntry(food, calories);
             setLogged(true);
+
+            // Persist status
+            if (messageId) {
+                LOGGED_CACHE.set(String(messageId), true);
+                await AsyncStorage.setItem(`calorie_logged_${messageId}`, 'true');
+            }
+
             if (onLogged) onLogged();
         } catch (error) {
             console.error(error);
@@ -44,7 +81,7 @@ export default function CalorieWidget({ food, options, onLogged }: CalorieWidget
             <View style={[styles.container, { backgroundColor: colors.card, borderColor: colors.primary }]}>
                 <View style={styles.successContent}>
                     <Ionicons name="checkmark-circle" size={24} color={colors.primary} />
-                    <Text style={[styles.successText, { color: colors.text }]}>Logged {food}!</Text>
+                    <Text style={[styles.successText, { color: colors.text }]}>{t('calories.logged')} {food}!</Text>
                 </View>
             </View>
         );
@@ -52,27 +89,35 @@ export default function CalorieWidget({ food, options, onLogged }: CalorieWidget
 
     return (
         <View style={[styles.container, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <Text style={[styles.title, { color: colors.text }]}>Log {food}</Text>
+            <Text style={[styles.title, { color: colors.text }]}>{t('calories.select_portion')} ({food})</Text>
 
             <View style={styles.optionsContainer}>
-                {options.map((opt, index) => (
-                    <TouchableOpacity
-                        key={index}
-                        style={[styles.optionButton, { backgroundColor: colors.inputBackground }]}
-                        onPress={() => handleLog(opt.calories)}
-                        disabled={loading}
-                    >
-                        <Text style={[styles.optionLabel, { color: colors.text }]}>{opt.label}</Text>
-                        <Text style={[styles.optionValue, { color: colors.primary }]}>{opt.calories} kcal</Text>
-                    </TouchableOpacity>
-                ))}
+                {options.map((opt, index) => {
+                    let label = opt.label;
+                    // Translate known keys
+                    if (opt.label === 'Light Meal') label = t('calories.light_meal') || 'Light Meal';
+                    if (opt.label === 'Average Meal') label = t('calories.average_meal') || 'Average Meal';
+                    if (opt.label === 'Heavier Meal') label = t('calories.heavier_meal') || 'Heavier Meal';
+
+                    return (
+                        <TouchableOpacity
+                            key={index}
+                            style={[styles.optionButton, { backgroundColor: colors.inputBackground }]}
+                            onPress={() => handleLog(opt.calories)}
+                            disabled={loading}
+                        >
+                            <Text style={[styles.optionLabel, { color: colors.text }]}>{label}</Text>
+                            <Text style={[styles.optionValue, { color: colors.primary }]}>{opt.calories} kcal</Text>
+                        </TouchableOpacity>
+                    );
+                })}
             </View>
 
             {showCustom ? (
                 <View style={styles.customContainer}>
                     <TextInput
                         style={[styles.input, { color: colors.text, backgroundColor: colors.inputBackground, borderColor: colors.border }]}
-                        placeholder="Cal"
+                        placeholder={t('calories.calories')}
                         placeholderTextColor={colors.textSecondary}
                         keyboardType="number-pad"
                         value={customCalories}
@@ -86,12 +131,12 @@ export default function CalorieWidget({ food, options, onLogged }: CalorieWidget
                         }}
                         disabled={loading || !customCalories}
                     >
-                        <Text style={styles.customButtonText}>Log</Text>
+                        <Text style={styles.customButtonText}>{t('calories.log_button')}</Text>
                     </TouchableOpacity>
                 </View>
             ) : (
                 <TouchableOpacity onPress={() => setShowCustom(true)} style={styles.showCustomBtn}>
-                    <Text style={[styles.showCustomText, { color: colors.textSecondary }]}>Enter Custom Amount</Text>
+                    <Text style={[styles.showCustomText, { color: colors.textSecondary }]}>{t('calories.log_custom')}</Text>
                 </TouchableOpacity>
             )}
 

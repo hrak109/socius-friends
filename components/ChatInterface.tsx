@@ -1,8 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Image, KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View, Alert } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Image, KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View, Alert, Keyboard } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Avatar, Bubble, Day, GiftedChat, IMessage, User, MessageText } from 'react-native-gifted-chat';
 import * as Clipboard from 'expo-clipboard';
 import * as Haptics from 'expo-haptics';
@@ -65,12 +65,30 @@ export default function ChatInterface({ onClose, isModal = false, initialMessage
     const textInputRef = useRef<any>(null);
     const processedMessageIds = useRef<Set<number>>(new Set());
 
+    // UI Layout State
+    const [isKeyboardVisible, setKeyboardVisible] = useState(false);
+    const insets = useSafeAreaInsets();
+
+    useEffect(() => {
+        const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+        const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+
+        const showListener = Keyboard.addListener(showEvent, () => setKeyboardVisible(true));
+        const hideListener = Keyboard.addListener(hideEvent, () => setKeyboardVisible(false));
+
+        return () => {
+            showListener.remove();
+            hideListener.remove();
+        };
+    }, []);
+
     // Sync waiting state with global typing state for this context
-    const threadId = companionId ? `socius-${companionId}` : context;
+    const threadId = friendId ? `user-${friendId}` : (companionId ? `socius-${companionId}` : context);
     const isGlobalTyping = typingThreads.has(threadId) || typingThreads.has(context);
 
     useEffect(() => {
         setIsWaitingForResponse(isGlobalTyping);
+        setIsTyping(isGlobalTyping);
     }, [isGlobalTyping]);
 
     // Listen for real-time messages from SSE via NotificationContext
@@ -99,12 +117,13 @@ export default function ChatInterface({ onClose, isModal = false, initialMessage
     useEffect(() => {
         if (initialMessage) {
             setText(initialMessage);
-            // Delay focus to ensure layout is ready
+            // Robust check: sometimes state updates are batched or clobbered on mount
             setTimeout(() => {
+                setText(prev => (prev && prev.length > 0) ? prev : initialMessage);
                 if (textInputRef.current) {
                     textInputRef.current.focus();
                 }
-            }, 600);
+            }, 300);
         }
     }, [initialMessage]);
 
@@ -119,12 +138,15 @@ export default function ChatInterface({ onClose, isModal = false, initialMessage
                 // Load cached messages first for instant display
                 const cached = await getCachedMessages(cacheKey);
                 if (cached.length > 0 && isActive) {
-                    const restoredMessages: IMessage[] = cached.map((m) => ({
-                        _id: m._id,
-                        text: m.text,
-                        createdAt: new Date(m.createdAt),
-                        user: m.user,
-                    }));
+                    const restoredMessages: IMessage[] = cached.map((m) => {
+                        if (m._id && typeof m._id === 'number') processedMessageIds.current.add(m._id);
+                        return {
+                            _id: m._id,
+                            text: m.text,
+                            createdAt: new Date(m.createdAt),
+                            user: m.user,
+                        };
+                    });
                     setMessages(restoredMessages);
                 }
 
@@ -146,6 +168,7 @@ export default function ChatInterface({ onClose, isModal = false, initialMessage
                     if (!isActive) return;
 
                     const formattedMessages: IMessage[] = history.map((msg: any) => {
+                        if (msg.id) processedMessageIds.current.add(msg.id);
                         const safeId = msg.id || Math.random();
 
                         let safeDate = new Date();
@@ -272,16 +295,7 @@ export default function ChatInterface({ onClose, isModal = false, initialMessage
         setText('');
     }, [handleSendQuestion]);
 
-    useEffect(() => {
-        if (messages.length > 0 && messages[0].user._id !== 1) {
-            setIsTyping(false);
-            // setIsWaitingForResponse handled by global state
-            if (responseTimeoutRef.current) clearTimeout(responseTimeoutRef.current);
 
-            const currentThreadId = companionId ? `socius-${companionId}` : context;
-            setTyping(currentThreadId, false);
-        }
-    }, [messages]);
 
     const appendBotMessage = (text: string) => {
         const msg: IMessage = {
@@ -296,19 +310,30 @@ export default function ChatInterface({ onClose, isModal = false, initialMessage
 
 
     const renderCustomView = useCallback((props: any) => {
-        const { currentMessage } = props;
-        if (!currentMessage || !currentMessage.text) return null;
+        return null; // Moved to renderMessageText to ensure bottom position
+    }, []);
 
-        const jsonMatch = currentMessage.text.match(/```json\n([\s\S]*?)\n```/);
+    const renderMessageText = useCallback((props: any) => {
+        const { currentMessage } = props;
+        const isUser = currentMessage.user._id === 1;
+        let text = currentMessage.text;
+
+        const jsonMatch = currentMessage.text.match(/```json\s*([\s\S]*?)\s*```/);
+        let widget = null;
+
+        // Remove JSON block for display
+        text = text.replace(/```json\s*[\s\S]*?\s*```/, '').trim();
+
         if (jsonMatch) {
             try {
                 const data = JSON.parse(jsonMatch[1]);
                 if (data.type === 'calorie_event') {
-                    return (
-                        <View style={{ padding: 5, width: 250 }}>
+                    widget = (
+                        <View style={{ padding: 5, width: 250, marginTop: 10 }}>
                             <CalorieWidget
                                 food={data.food}
                                 options={data.options}
+                                messageId={currentMessage._id}
                             />
                         </View>
                     );
@@ -317,26 +342,22 @@ export default function ChatInterface({ onClose, isModal = false, initialMessage
                 // Ignore parse errors
             }
         }
-        return null;
-    }, []);
 
-    const renderMessageText = useCallback((props: any) => {
-        const { currentMessage } = props;
-        let text = currentMessage.text;
-
-        // Remove JSON block for display
-        text = text.replace(/```json\n[\s\S]*?\n```/, '').trim();
-
-        if (!text) return null; // Don't render empty text bubble if only widget exists
+        if (!text && !widget) return null;
 
         return (
-            <MessageText
-                {...props}
-                currentMessage={{
-                    ...currentMessage,
-                    text: text
-                }}
-            />
+            <View>
+                {text ? (
+                    <MessageText
+                        {...props}
+                        currentMessage={{
+                            ...currentMessage,
+                            text: text
+                        }}
+                    />
+                ) : null}
+                {widget}
+            </View>
         );
     }, []);
 
@@ -500,11 +521,11 @@ export default function ChatInterface({ onClose, isModal = false, initialMessage
         <KeyboardAvoidingView
             style={{ flex: 1 }}
             behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-            keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? (showHeader ? 90 : 0) : 0}
         >
             <SafeAreaView
                 style={[styles.container, { backgroundColor: colors.background }]}
-                edges={['left', 'right', 'bottom']}
+                edges={['left', 'right']}
             >
                 {showHeader && (
                     <View style={[styles.header, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
@@ -585,7 +606,7 @@ export default function ChatInterface({ onClose, isModal = false, initialMessage
                         right: { color: 'rgba(255, 255, 255, 0.7)' }
                     }}
                     keyboardShouldPersistTaps="handled"
-                    bottomOffset={Platform.OS === 'ios' ? 34 : 0}
+                    bottomOffset={Platform.OS === 'ios' && !isKeyboardVisible ? insets.bottom : 0}
                     dateFormat={language === 'ko' ? 'D일 M월' : 'MMMM D'}
                     dateFormatCalendar={{
                         sameDay: language === 'ko' ? `[${t('common.today') || '오늘'}]` : '[Today]',
