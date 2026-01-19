@@ -252,7 +252,7 @@ export default function FriendsScreen() {
                 <KeyboardAvoidingView
                     behavior={Platform.OS === 'ios' ? 'padding' : undefined}
                     style={{ flex: 1 }}
-                    keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}
+                    keyboardVerticalOffset={Platform.OS === 'ios' ? 40 : 0}
                 >
                     <View style={styles.modalOverlay}>
                         <View style={[styles.modalContent, { backgroundColor: colors.card, shadowColor: colors.shadow }]}>
