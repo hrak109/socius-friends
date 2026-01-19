@@ -1,61 +1,27 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { StyleSheet, View, Text, TouchableOpacity, FlatList, Modal, TextInput, Alert, ActivityIndicator, Keyboard, TouchableWithoutFeedback, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { Stack } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
-
-type CalorieEntry = {
-    id: string;
-    food: string;
-    calories: number;
-    date: string; // YYYY-MM-DD
-    timestamp: number;
-};
-
-const STORAGE_KEY = 'calories_entries';
+import AppSpecificChatHead from '../components/AppSpecificChatHead';
+import { useCalories, CalorieEntry } from '../hooks/useCalories';
 
 export default function CaloriesScreen() {
     const { colors, isDark } = useTheme();
     const { t } = useLanguage();
-    const [entries, setEntries] = useState<CalorieEntry[]>([]);
-    const [loading, setLoading] = useState(true);
+
+    // Use Shared Hook
+    const { entries, loading, addEntry, deleteEntry } = useCalories();
+
     const [modalVisible, setModalVisible] = useState(false);
 
     // Form state
     const [food, setFood] = useState('');
     const [calories, setCalories] = useState('');
 
-    useEffect(() => {
-        loadEntries();
-    }, []);
-
-    const loadEntries = async () => {
-        try {
-            const saved = await AsyncStorage.getItem(STORAGE_KEY);
-            if (saved) {
-                setEntries(JSON.parse(saved));
-            }
-        } catch (error) {
-            console.error('Failed to load calories', error);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const saveEntries = async (newEntries: CalorieEntry[]) => {
-        try {
-            await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(newEntries));
-            setEntries(newEntries);
-        } catch (error) {
-            console.error('Failed to save calories', error);
-            Alert.alert(t('common.error'), t('profile.profile_update_failed'));
-        }
-    };
-
-    const handleAddEntry = () => {
+    const handleAddEntry = async () => {
         if (!food.trim() || !calories.trim()) {
             return;
         }
@@ -66,24 +32,15 @@ export default function CaloriesScreen() {
             return;
         }
 
-        const now = new Date();
-        const dateStr = now.toISOString().split('T')[0];
-
-        const newEntry: CalorieEntry = {
-            id: Date.now().toString(),
-            food: food.trim(),
-            calories: calNum,
-            date: dateStr,
-            timestamp: now.getTime(),
-        };
-
-        const updated = [newEntry, ...entries];
-        saveEntries(updated);
-
-        // Reset and close
-        setFood('');
-        setCalories('');
-        setModalVisible(false);
+        try {
+            await addEntry(food.trim(), calNum);
+            // Reset and close
+            setFood('');
+            setCalories('');
+            setModalVisible(false);
+        } catch (e) {
+            Alert.alert(t('common.error'), 'Failed to save entry');
+        }
     };
 
     const handleDelete = (id: string) => {
@@ -95,10 +52,7 @@ export default function CaloriesScreen() {
                 {
                     text: t('common.confirm'),
                     style: 'destructive',
-                    onPress: () => {
-                        const updated = entries.filter(e => e.id !== id);
-                        saveEntries(updated);
-                    }
+                    onPress: () => deleteEntry(id)
                 }
             ]
         );
@@ -113,7 +67,7 @@ export default function CaloriesScreen() {
         // Daily Average
         // Get unique dates
         const dates = new Set(entries.map(e => e.date));
-        // Add today if not present (so average includes today even if 0)
+        // Add today if not present
         dates.add(todayStr);
 
         const totalAll = entries.reduce((sum, e) => sum + e.calories, 0);
@@ -121,9 +75,6 @@ export default function CaloriesScreen() {
 
         return { todayTotal, average };
     }, [entries]);
-
-    // List list all, showing date header when it changes.
-    // And "average calories eaten in a day"
 
     const renderItem = ({ item, index }: { item: CalorieEntry, index: number }) => {
         const prevItem = entries[index - 1];
@@ -151,56 +102,77 @@ export default function CaloriesScreen() {
                             {new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </Text>
                     </View>
-                    <Text style={[styles.entryCalories, { color: colors.text }]}>{item.calories} kcal</Text>
+                    <Text style={[styles.entryCalories, { color: colors.primary }]}>
+                        {item.calories}
+                    </Text>
                 </TouchableOpacity>
             </View>
         );
     };
 
-    return (
-        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['bottom']}>
-            <Stack.Screen options={{ title: t('calories.title') }} />
+    if (loading) {
+        return (
+            <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+                <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 50 }} />
+            </SafeAreaView>
+        );
+    }
 
-            {/* Dashboard */}
-            <View style={styles.dashboard}>
-                <View style={[styles.statCard, { backgroundColor: colors.card, shadowColor: colors.border }]}>
-                    <Text style={[styles.statLabel, { color: colors.textSecondary }]}>{t('calories.today_total')}</Text>
+    const totalCalories = entries.reduce((sum, item) => sum + item.calories, 0);
+
+    return (
+        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+            <Stack.Screen options={{ headerShown: false }} />
+
+            {/* Header */}
+            <View style={[styles.header, { borderBottomColor: colors.border }]}>
+                <TouchableOpacity onPress={() => { }} style={{ opacity: 0 }}>
+                    <Ionicons name="menu" size={24} color={colors.text} />
+                </TouchableOpacity>
+                <Text style={[styles.headerTitle, { color: colors.text }]}>{t('home.calories')}</Text>
+                <TouchableOpacity onPress={() => setModalVisible(true)}>
+                    <Ionicons name="add-circle" size={28} color={colors.primary} />
+                </TouchableOpacity>
+            </View>
+
+            {/* Stats Card */}
+            <View style={styles.statsContainer}>
+                <View style={[styles.statCard, { backgroundColor: colors.card }]}>
+                    <Text style={[styles.statLabel, { color: colors.textSecondary }]}>{t('calories.today')}</Text>
                     <Text style={[styles.statValue, { color: colors.primary }]}>{stats.todayTotal}</Text>
                     <Text style={[styles.statUnit, { color: colors.textSecondary }]}>kcal</Text>
                 </View>
-                <View style={[styles.statCard, { backgroundColor: colors.card, shadowColor: colors.border }]}>
-                    <Text style={[styles.statLabel, { color: colors.textSecondary }]}>{t('calories.daily_average')}</Text>
-                    <Text style={[styles.statValue, { color: '#34C759' }]}>{stats.average}</Text>
-                    <Text style={[styles.statUnit, { color: colors.textSecondary }]}>kcal</Text>
+                <View style={[styles.statCard, { backgroundColor: colors.card }]}>
+                    <Text style={[styles.statLabel, { color: colors.textSecondary }]}>{t('calories.average')}</Text>
+                    <Text style={[styles.statValue, { color: colors.text }]}>{stats.average}</Text>
+                    <Text style={[styles.statUnit, { color: colors.textSecondary }]}>kcal/day</Text>
                 </View>
             </View>
 
-            {loading ? (
-                <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 20 }} />
+            {/* List */}
+            {entries.length === 0 ? (
+                <View style={styles.emptyContainer}>
+                    <Ionicons name="fast-food-outline" size={64} color={colors.textSecondary} />
+                    <Text style={[styles.emptyText, { color: colors.textSecondary }]}>{t('calories.no_entries')}</Text>
+                    <TouchableOpacity
+                        style={[styles.addButton, { backgroundColor: colors.primary }]}
+                        onPress={() => setModalVisible(true)}
+                    >
+                        <Text style={styles.addButtonText}>{t('calories.add_entry')}</Text>
+                    </TouchableOpacity>
+                </View>
             ) : (
                 <FlatList
                     data={entries}
-                    renderItem={renderItem}
                     keyExtractor={item => item.id}
+                    renderItem={renderItem}
                     contentContainerStyle={styles.listContent}
-                    ListEmptyComponent={
-                        <View style={styles.emptyContainer}>
-                            <Ionicons name="nutrition-outline" size={48} color={colors.textSecondary} />
-                            <Text style={[styles.emptyText, { color: colors.textSecondary }]}>{t('calories.no_entries')}</Text>
-                        </View>
-                    }
+                    showsVerticalScrollIndicator={false}
                 />
             )}
 
-            {/* FAB */}
-            <TouchableOpacity
-                style={[styles.fab, { backgroundColor: colors.primary, shadowColor: "#000" }]}
-                onPress={() => setModalVisible(true)}
-            >
-                <Ionicons name="add" size={30} color="#fff" />
-            </TouchableOpacity>
 
-            {/* Add Entry Modal */}
+            {/* Add Modal */}
             <Modal
                 animationType="slide"
                 transparent={true}
@@ -208,160 +180,140 @@ export default function CaloriesScreen() {
                 onRequestClose={() => setModalVisible(false)}
             >
                 <KeyboardAvoidingView
-                    behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-                    style={{ flex: 1 }}
-                    keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                    style={styles.modalOverlay}
                 >
-                    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-                        <View style={styles.modalOverlay}>
-                            <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
-                                <View style={styles.modalHeader}>
-                                    <Text style={[styles.modalTitle, { color: colors.text }]}>{t('calories.add_entry')}</Text>
-                                    <TouchableOpacity onPress={() => setModalVisible(false)}>
-                                        <Ionicons name="close" size={24} color={colors.textSecondary} />
-                                    </TouchableOpacity>
-                                </View>
-
-                                <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-                                    <TextInput
-                                        style={[styles.input, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#f5f5f5', color: colors.text, borderColor: colors.border }]}
-                                        placeholder={t('calories.food_placeholder')}
-                                        placeholderTextColor={colors.textSecondary}
-                                        value={food}
-                                        onChangeText={setFood}
-                                    />
-
-                                    <TextInput
-                                        style={[styles.input, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#f5f5f5', color: colors.text, borderColor: colors.border }]}
-                                        placeholder={t('calories.calories_placeholder')}
-                                        placeholderTextColor={colors.textSecondary}
-                                        value={calories}
-                                        onChangeText={setCalories}
-                                        keyboardType="number-pad"
-                                    />
-
-                                    <TouchableOpacity
-                                        style={[styles.saveButton, { backgroundColor: colors.primary }]}
-                                        onPress={handleAddEntry}
-                                    >
-                                        <Text style={styles.saveButtonText}>{t('calories.save')}</Text>
-                                    </TouchableOpacity>
-                                </ScrollView>
-                            </View>
-                        </View>
+                    <TouchableWithoutFeedback onPress={() => setModalVisible(false)}>
+                        <View style={styles.modalBackdrop} />
                     </TouchableWithoutFeedback>
+
+                    <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
+                        <View style={styles.modalHeader}>
+                            <Text style={[styles.modalTitle, { color: colors.text }]}>{t('calories.add_entry')}</Text>
+                            <TouchableOpacity onPress={() => setModalVisible(false)}>
+                                <Ionicons name="close" size={24} color={colors.textSecondary} />
+                            </TouchableOpacity>
+                        </View>
+
+                        <Text style={[styles.inputLabel, { color: colors.text }]}>{t('calories.food_name')}</Text>
+                        <TextInput
+                            style={[styles.input, { backgroundColor: colors.inputBackground, color: colors.text, borderColor: colors.border }]}
+                            placeholder="e.g. Banana"
+                            placeholderTextColor={colors.textSecondary}
+                            value={food}
+                            onChangeText={setFood}
+                            autoFocus
+                        />
+
+                        <Text style={[styles.inputLabel, { color: colors.text }]}>{t('calories.calories')}</Text>
+                        <TextInput
+                            style={[styles.input, { backgroundColor: colors.inputBackground, color: colors.text, borderColor: colors.border }]}
+                            placeholder="e.g. 105"
+                            placeholderTextColor={colors.textSecondary}
+                            value={calories}
+                            onChangeText={setCalories}
+                            keyboardType="number-pad"
+                        />
+
+                        <TouchableOpacity
+                            style={[styles.modalAddButton, { backgroundColor: colors.primary }]}
+                            onPress={handleAddEntry}
+                        >
+                            <Text style={styles.modalAddButtonText}>{t('common.add')}</Text>
+                        </TouchableOpacity>
+                    </View>
                 </KeyboardAvoidingView>
             </Modal>
+
+            <AppSpecificChatHead roleType="cal_tracker" appContext="calories" />
         </SafeAreaView>
     );
 }
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-    },
-    dashboard: {
+    container: { flex: 1 },
+    header: {
         flexDirection: 'row',
-        padding: 16,
-        gap: 12,
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: 20,
+        paddingVertical: 15,
+        borderBottomWidth: 1,
+    },
+    headerTitle: { fontSize: 20, fontWeight: 'bold' },
+    statsContainer: {
+        flexDirection: 'row',
+        padding: 20,
+        gap: 15,
     },
     statCard: {
         flex: 1,
-        padding: 16,
+        padding: 15,
         borderRadius: 16,
         alignItems: 'center',
         justifyContent: 'center',
+        elevation: 2,
+        shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.1,
         shadowRadius: 4,
-        elevation: 2,
     },
-    statLabel: {
-        fontSize: 13,
-        fontWeight: '500',
-        marginBottom: 4,
-    },
-    statValue: {
-        fontSize: 28,
-        fontWeight: 'bold',
-    },
-    statUnit: {
-        fontSize: 12,
-        fontWeight: '500',
-    },
-    listContent: {
-        paddingBottom: 80,
-    },
+    statLabel: { fontSize: 14, marginBottom: 5 },
+    statValue: { fontSize: 28, fontWeight: 'bold' },
+    statUnit: { fontSize: 12 },
+    listContent: { paddingHorizontal: 20, paddingBottom: 100 },
     dateHeader: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        paddingVertical: 8,
-        paddingHorizontal: 16,
         alignItems: 'center',
+        paddingVertical: 8,
+        paddingHorizontal: 12,
+        borderRadius: 8,
+        marginTop: 15,
+        marginBottom: 5,
     },
-    dateHeaderText: {
-        fontSize: 14,
-        fontWeight: '600',
-    },
-    dateHeaderTotal: {
-        fontSize: 14,
-        fontWeight: 'bold',
-    },
+    dateHeaderText: { fontSize: 14, fontWeight: '600' },
+    dateHeaderTotal: { fontSize: 14, fontWeight: 'bold' },
     entryItem: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        paddingVertical: 12,
-        paddingHorizontal: 16,
-        borderBottomWidth: StyleSheet.hairlineWidth,
+        paddingVertical: 15,
+        borderBottomWidth: 1,
     },
-    entryLeft: {
-        flex: 1,
-    },
-    entryFood: {
-        fontSize: 16,
-        fontWeight: '500',
-    },
-    entryTime: {
-        fontSize: 12,
-        marginTop: 2,
-    },
-    entryCalories: {
-        fontSize: 16,
-        fontWeight: '600',
-    },
+    entryLeft: { flex: 1 },
+    entryFood: { fontSize: 16, fontWeight: '500', marginBottom: 2 },
+    entryTime: { fontSize: 12 },
+    entryCalories: { fontSize: 18, fontWeight: 'bold' },
     emptyContainer: {
+        flex: 1,
         alignItems: 'center',
         justifyContent: 'center',
-        paddingTop: 60,
+        paddingBottom: 50,
     },
-    emptyText: {
-        marginTop: 12,
-        fontSize: 16,
+    emptyText: { marginTop: 15, fontSize: 16 },
+    addButton: {
+        marginTop: 20,
+        paddingVertical: 12,
+        paddingHorizontal: 24,
+        borderRadius: 25,
     },
-    fab: {
-        position: 'absolute',
-        bottom: 24,
-        right: 24,
-        width: 56,
-        height: 56,
-        borderRadius: 28,
-        alignItems: 'center',
-        justifyContent: 'center',
-        elevation: 6,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 4.65,
-    },
+    addButtonText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
+
+    // Modal
     modalOverlay: {
         flex: 1,
+        justifyContent: 'flex-end',
+    },
+    modalBackdrop: {
+        ...StyleSheet.absoluteFillObject,
         backgroundColor: 'rgba(0,0,0,0.5)',
-        justifyContent: 'center',
-        paddingHorizontal: 16,
     },
     modalContent: {
-        borderRadius: 24,
+        borderTopLeftRadius: 24,
+        borderTopRightRadius: 24,
         padding: 24,
+        paddingBottom: Platform.OS === 'ios' ? 40 : 24,
     },
     modalHeader: {
         flexDirection: 'row',
@@ -369,28 +321,20 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         marginBottom: 20,
     },
-    modalTitle: {
-        fontSize: 20,
-        fontWeight: 'bold',
-    },
+    modalTitle: { fontSize: 20, fontWeight: 'bold' },
+    inputLabel: { fontSize: 14, marginBottom: 8, fontWeight: '500' },
     input: {
-        height: 50,
         borderRadius: 12,
-        paddingHorizontal: 16,
-        marginBottom: 16,
+        padding: 16,
         fontSize: 16,
         borderWidth: 1,
+        marginBottom: 20,
     },
-    saveButton: {
-        height: 50,
-        borderRadius: 12,
+    modalAddButton: {
+        borderRadius: 16,
+        padding: 16,
         alignItems: 'center',
-        justifyContent: 'center',
-        marginTop: 8,
+        marginTop: 10,
     },
-    saveButtonText: {
-        color: '#fff',
-        fontSize: 16,
-        fontWeight: 'bold',
-    },
+    modalAddButtonText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
 });

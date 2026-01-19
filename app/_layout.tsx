@@ -106,9 +106,9 @@ function RootLayoutNav() {
                     headerStyle: { backgroundColor: colors.background },
                     headerTintColor: colors.text,
                     headerTitleStyle: { color: colors.text },
-                    // Enable iOS swipe back gesture
+                    // Enable iOS swipe back gesture (edge only)
                     gestureEnabled: true,
-                    fullScreenGestureEnabled: true,
+                    headerBackTitle: t('common.back'), // Unified back button text
                 }}
             >
                 <Stack.Screen name="index" options={{ headerShown: false }} />

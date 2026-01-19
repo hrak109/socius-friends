@@ -6,6 +6,7 @@ import { useTheme } from '../context/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 import api from '../services/api';
 import { useLanguage } from '../context/LanguageContext';
+import { useDebounce } from '../hooks/useDebounce';
 
 type NoteEntry = {
     id: string;
@@ -29,6 +30,10 @@ export default function NotesScreen() {
     const [editContent, setEditContent] = useState('');
     const [editTitle, setEditTitle] = useState('');
     const [isSavingEdit, setIsSavingEdit] = useState(false);
+    const [isAutosaving, setIsAutosaving] = useState(false);
+
+    const debouncedTitle = useDebounce(editTitle, 1000);
+    const debouncedContent = useDebounce(editContent, 1000);
 
     // Modal states
     const [modalVisible, setModalVisible] = useState(false);
@@ -98,9 +103,12 @@ export default function NotesScreen() {
         setEditTitle('');
     };
 
-    const saveEdit = async (id: string) => {
+    const saveEdit = async (id: string, silent: boolean = false) => {
         if (editContent.trim() === '') return;
-        setIsSavingEdit(true);
+
+        if (silent) setIsAutosaving(true);
+        else setIsSavingEdit(true);
+
         try {
             const res = await api.put(`/notes/${id}`, {
                 content: editContent,
@@ -109,15 +117,36 @@ export default function NotesScreen() {
 
             const updated = entries.map(e => e.id === id ? res.data : e);
             setEntries(updated);
-            setEditingId(null);
-            setEditContent('');
-            setEditTitle('');
+
+            if (!silent) {
+                setEditingId(null);
+                setEditContent('');
+                setEditTitle('');
+                setModalVisible(false); // Ensure modal closes
+            }
         } catch (error) {
             console.error('Failed to update note:', error);
         } finally {
-            setIsSavingEdit(false);
+            if (silent) setIsAutosaving(false);
+            else setIsSavingEdit(false);
         }
     };
+
+    // Autosave Effect
+    useEffect(() => {
+        if (!editingId) return;
+        const currentEntry = entries.find(e => e.id === editingId);
+        if (!currentEntry) return;
+
+        // Check if changed compared to SAVED entry
+        // We use debounced values to determine if we should save
+        const titleChanged = (debouncedTitle || '').trim() !== (currentEntry.title || '').trim();
+        const contentChanged = debouncedContent.trim() !== currentEntry.content.trim();
+
+        if (titleChanged || contentChanged) {
+            saveEdit(editingId, true);
+        }
+    }, [debouncedTitle, debouncedContent]);
 
     const renderNoteCard = (item: NoteEntry) => (
         <TouchableOpacity
@@ -143,59 +172,51 @@ export default function NotesScreen() {
     const rightColumn = filteredEntries.filter((_, i) => i % 2 !== 0);
 
     return (
-        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-            <Stack.Screen options={{ headerShown: false }} />
+        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['bottom', 'left', 'right']}>
+            <Stack.Screen options={{ title: t('notes.title') }} />
 
-            {/* Custom Header with Search */}
-            <View style={[styles.header, { backgroundColor: colors.background }]}>
-                <View style={styles.headerTop}>
-                    <TouchableOpacity onPress={() => Platform.OS === 'ios' ? null : null /* Should handle back if needed via navigation */} style={{ opacity: 0 }}>
-                        <Ionicons name="arrow-back" size={24} color={colors.text} />
+
+            <View style={[styles.searchContainer, { marginHorizontal: 16, marginTop: 10, marginBottom: 10, backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)' }]}>
+                <Ionicons name="search" size={20} color={colors.textSecondary} style={{ marginRight: 8 }} />
+                <TextInput
+                    placeholder={t('notes.title_placeholder') || 'Search notes...'} // Recycle placeholder trans or add new
+                    placeholderTextColor={colors.textSecondary}
+                    style={[styles.searchInput, { color: colors.text }]}
+                    value={searchQuery}
+                    onChangeText={setSearchQuery}
+                />
+                {searchQuery.length > 0 && (
+                    <TouchableOpacity onPress={() => setSearchQuery('')}>
+                        <Ionicons name="close-circle" size={18} color={colors.textSecondary} />
                     </TouchableOpacity>
-                    <Text style={[styles.headerTitle, { color: colors.text }]}>{t('notes.title')}</Text>
-                    <View style={{ width: 24 }} />
-                </View>
-
-                <View style={[styles.searchContainer, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)' }]}>
-                    <Ionicons name="search" size={20} color={colors.textSecondary} style={{ marginRight: 8 }} />
-                    <TextInput
-                        placeholder={t('notes.title_placeholder') || 'Search notes...'} // Recycle placeholder trans or add new
-                        placeholderTextColor={colors.textSecondary}
-                        style={[styles.searchInput, { color: colors.text }]}
-                        value={searchQuery}
-                        onChangeText={setSearchQuery}
-                    />
-                    {searchQuery.length > 0 && (
-                        <TouchableOpacity onPress={() => setSearchQuery('')}>
-                            <Ionicons name="close-circle" size={18} color={colors.textSecondary} />
-                        </TouchableOpacity>
-                    )}
-                </View>
+                )}
             </View>
 
-            {isLoading ? (
-                <View style={[styles.center, { backgroundColor: colors.background }]}>
-                    <ActivityIndicator size="large" color={colors.primary} />
-                </View>
-            ) : (
-                <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-                    {filteredEntries.length === 0 ? (
-                        <View style={styles.emptyState}>
-                            <Ionicons name="document-text-outline" size={64} color={colors.textSecondary} style={{ opacity: 0.5 }} />
-                            <Text style={[styles.emptyText, { color: colors.textSecondary }]}>{t('notes.no_entries')}</Text>
-                        </View>
-                    ) : (
-                        <View style={styles.masonryContainer}>
-                            <View style={styles.column}>
-                                {leftColumn.map(renderNoteCard)}
+            {
+                isLoading ? (
+                    <View style={[styles.center, { backgroundColor: colors.background }]}>
+                        <ActivityIndicator size="large" color={colors.primary} />
+                    </View>
+                ) : (
+                    <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+                        {filteredEntries.length === 0 ? (
+                            <View style={styles.emptyState}>
+                                <Ionicons name="document-text-outline" size={64} color={colors.textSecondary} style={{ opacity: 0.5 }} />
+                                <Text style={[styles.emptyText, { color: colors.textSecondary }]}>{t('notes.no_entries')}</Text>
                             </View>
-                            <View style={styles.column}>
-                                {rightColumn.map(renderNoteCard)}
+                        ) : (
+                            <View style={styles.masonryContainer}>
+                                <View style={styles.column}>
+                                    {leftColumn.map(renderNoteCard)}
+                                </View>
+                                <View style={styles.column}>
+                                    {rightColumn.map(renderNoteCard)}
+                                </View>
                             </View>
-                        </View>
-                    )}
-                </ScrollView>
-            )}
+                        )}
+                    </ScrollView>
+                )
+            }
 
             <TouchableOpacity
                 style={[styles.fab, { backgroundColor: colors.primary, shadowColor: colors.primary }]}
@@ -224,10 +245,10 @@ export default function NotesScreen() {
                                 <Text style={[styles.modalCancel, { color: colors.textSecondary }]}>{t('common.cancel')}</Text>
                             </TouchableOpacity>
                             <Text style={[styles.modalTitleText, { color: colors.text }]}>
-                                {editingId ? t('notes.new_entry') /* Reuse or Fix translation later */ : t('notes.new_entry')}
+                                {editingId ? (isAutosaving ? t('common.saving') || 'Saving...' : t('notes.edit_entry')) : t('notes.new_entry')}
                             </Text>
                             <TouchableOpacity
-                                onPress={editingId ? () => saveEdit(editingId) : handleSaveEntry}
+                                onPress={editingId ? () => saveEdit(editingId, false) : handleSaveEntry}
                                 disabled={isSavingEdit}
                             >
                                 <Text style={[styles.modalSave, { color: colors.primary }]}>{t('common.save')}</Text>
@@ -257,7 +278,7 @@ export default function NotesScreen() {
                 </KeyboardAvoidingView>
             </Modal>
 
-        </SafeAreaView>
+        </SafeAreaView >
     );
 }
 

@@ -1,0 +1,13 @@
+diff --git a/node_modules/react-native-gifted-chat/lib/MessageContainer/index.js b/node_modules/react-native-gifted-chat/lib/MessageContainer/index.js
+index 964b436..6dd4589 100644
+--- a/node_modules/react-native-gifted-chat/lib/MessageContainer/index.js
++++ b/node_modules/react-native-gifted-chat/lib/MessageContainer/index.js
+@@ -217,7 +217,7 @@ function MessageContainer(props) {
+       {isScrollToBottomEnabled
+             ? renderScrollToBottomWrapper()
+             : null}
+-      <DayAnimated scrolledY={scrolledY} daysPositions={daysPositions} listHeight={listHeight} messages={messages} isLoadingEarlier={isLoadingEarlier}/>
++      <DayAnimated scrolledY={scrolledY} daysPositions={daysPositions} listHeight={listHeight} messages={messages} isLoadingEarlier={isLoadingEarlier} renderDay={props.renderDay} dateFormat={props.dateFormat} dateFormatCalendar={props.dateFormatCalendar}/>
+     </View>);
+ }
+ export default MessageContainer;

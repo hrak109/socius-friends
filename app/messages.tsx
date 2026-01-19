@@ -21,6 +21,7 @@ import api from '../services/api';
 import DraggableFlatList, { ScaleDecorator, RenderItemParams } from 'react-native-draggable-flatlist';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import TypingIndicator from '../components/TypingIndicator';
+import { getCachedThreads, cacheThreads, CachedThread } from '../services/ChatCache';
 
 const APPS_ORDER_KEY = 'user_apps_order_v1';
 
@@ -119,6 +120,12 @@ export default function MessagesScreen() {
     };
 
     const loadThreads = useCallback(async () => {
+        // Load cached threads first for instant display
+        const cached = await getCachedThreads();
+        if (cached.length > 0) {
+            setThreads(cached as ChatThread[]);
+        }
+
         try {
             // Load real user chats
             const dmResponse = await api.get('/messages/recent');
@@ -158,13 +165,17 @@ export default function MessagesScreen() {
                 });
 
                 setThreads(allThreads);
+                // Cache the fresh threads
+                cacheThreads(allThreads as CachedThread[]);
             } catch (error) {
                 console.error('Failed to load socius friends:', error);
                 // Fallback to just user threads if socius fails
                 setThreads([...userThreads]);
+                cacheThreads(userThreads as CachedThread[]);
             }
         } catch (error) {
             console.error('Failed to load threads:', error);
+            // Keep cached data if API fails
         }
     }, []);
 

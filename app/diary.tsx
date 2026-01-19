@@ -6,6 +6,7 @@ import { useTheme } from '../context/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 import api from '../services/api';
 import { useLanguage } from '../context/LanguageContext';
+import { useDebounce } from '../hooks/useDebounce';
 
 type DiaryEntry = {
     id: string;
@@ -26,6 +27,10 @@ export default function DiaryScreen() {
     const [editContent, setEditContent] = useState('');
     const [editTitle, setEditTitle] = useState('');
     const [isSavingEdit, setIsSavingEdit] = useState(false);
+    const [isAutosaving, setIsAutosaving] = useState(false);
+
+    const debouncedTitle = useDebounce(editTitle, 1000);
+    const debouncedContent = useDebounce(editContent, 1000);
 
     // Modal States
     const [modalVisible, setModalVisible] = useState(false);
@@ -92,24 +97,46 @@ export default function DiaryScreen() {
         setEditTitle('');
     };
 
-    const saveEdit = async (id: string) => {
+    const saveEdit = async (id: string, silent: boolean = false) => {
         if (editContent.trim() === '') return;
-        setIsSavingEdit(true);
+
+        if (silent) setIsAutosaving(true);
+        else setIsSavingEdit(true);
+
         try {
             const res = await api.put(`/diary/${id}`, {
                 content: editContent,
                 title: editTitle.trim() === '' ? undefined : editTitle
             });
             setEntries(entries.map(e => e.id === id ? res.data : e));
-            setEditingId(null);
-            setEditContent('');
-            setEditTitle('');
+
+            if (!silent) {
+                setEditingId(null);
+                setEditContent('');
+                setEditTitle('');
+            }
         } catch (error) {
             console.error('Failed to update diary entry:', error);
         } finally {
-            setIsSavingEdit(false);
+            if (silent) setIsAutosaving(false);
+            else setIsSavingEdit(false);
         }
     };
+
+    // Autosave Effect
+    useEffect(() => {
+        if (!editingId) return;
+        const currentEntry = entries.find(e => e.id === editingId);
+        if (!currentEntry) return;
+
+        // Check if changed
+        const titleChanged = (debouncedTitle || '').trim() !== (currentEntry.title || '').trim();
+        const contentChanged = debouncedContent.trim() !== currentEntry.content.trim();
+
+        if (titleChanged || contentChanged) {
+            saveEdit(editingId, true);
+        }
+    }, [debouncedTitle, debouncedContent]);
 
     const renderTimelineItem = ({ item, index }: { item: DiaryEntry; index: number }) => {
         const isEditing = editingId === item.id;
@@ -160,8 +187,10 @@ export default function DiaryScreen() {
                                     <TouchableOpacity onPress={cancelEditing} disabled={isSavingEdit}>
                                         <Text style={[styles.editText, { color: colors.textSecondary }]}>{t('common.cancel')}</Text>
                                     </TouchableOpacity>
-                                    <TouchableOpacity onPress={() => saveEdit(item.id)} disabled={isSavingEdit}>
-                                        <Text style={[styles.editText, { color: colors.primary, fontWeight: 'bold' }]}>{t('common.save')}</Text>
+                                    <TouchableOpacity onPress={() => saveEdit(item.id, false)} disabled={isSavingEdit}>
+                                        <Text style={[styles.editText, { color: colors.primary, fontWeight: 'bold' }]}>
+                                            {isAutosaving ? t('common.saving') : t('common.save')}
+                                        </Text>
                                     </TouchableOpacity>
                                 </View>
                             </View>
@@ -195,7 +224,7 @@ export default function DiaryScreen() {
 
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-            <Stack.Screen options={{ title: t('diary.title'), headerBackTitle: t('common.back') }} />
+            <Stack.Screen options={{ title: t('diary.title') }} />
 
             {isLoading ? (
                 <View style={styles.center}>

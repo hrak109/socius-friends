@@ -47,23 +47,23 @@ export const lightColors: ThemeColors = {
 };
 
 export const darkColors: ThemeColors = {
-    background: '#2a2a2a',
+    background: '#3a3a3a',
     text: '#ececec',
     textSecondary: '#b8b8b8',
     primary: '#8ab4f8',
-    card: '#353535',
-    border: '#505050',
+    card: '#454545',
+    border: '#5a5a5a',
     success: '#34a853',
     danger: '#ef5350',
     warning: '#fbbc04',
-    tabBar: '#353535',
+    tabBar: '#454545',
     tabBarActive: '#4285f4',
     tabBarInactive: '#909090',
-    inputBackground: '#404040',
+    inputBackground: '#4a4a4a',
     overlay: 'rgba(0,0,0,0.5)',
     shadow: '#000000',
     error: '#f28b82',
-    disabled: '#707070',
+    disabled: '#808080',
     buttonText: '#2a2a2a',
 };
 

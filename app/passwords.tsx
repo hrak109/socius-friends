@@ -7,6 +7,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Clipboard from 'expo-clipboard';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
+import AppSpecificChatHead from '../components/AppSpecificChatHead';
 
 type PasswordAccount = {
     id: string;
@@ -374,6 +375,9 @@ export default function PasswordsScreen() {
                     </TouchableWithoutFeedback>
                 </KeyboardAvoidingView>
             </Modal>
+
+            {/* Secrets Friend Chat Head */}
+            <AppSpecificChatHead roleType="secrets" appContext="passwords" />
         </SafeAreaView>
     );
 }

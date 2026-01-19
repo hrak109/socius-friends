@@ -3,10 +3,11 @@ import { useFocusEffect } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Image, KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Avatar, Bubble, GiftedChat, IMessage, User } from 'react-native-gifted-chat';
+import { Avatar, Bubble, Day, GiftedChat, IMessage, User, MessageText } from 'react-native-gifted-chat';
 import * as Clipboard from 'expo-clipboard';
 import * as Haptics from 'expo-haptics';
 import TypingIndicator from './TypingIndicator';
+import CalorieWidget from './CalorieWidget';
 import { PROFILE_AVATAR_MAP, SOCIUS_AVATAR_MAP } from '../constants/avatars';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -15,6 +16,7 @@ import { useTheme } from '../context/ThemeContext';
 import { useUserProfile } from '../context/UserProfileContext';
 import api from '../services/api';
 import { fixTimestamp } from '../utils/date';
+import { getCachedMessages, cacheMessages, CachedMessage } from '../services/ChatCache';
 
 const SociusAvatar = ({ source }: { source: any }) => {
     const { colors } = useTheme();
@@ -111,6 +113,21 @@ export default function ChatInterface({ onClose, isModal = false, initialMessage
             let isActive = true;
 
             const fetchHistory = async () => {
+                // Determine cache key
+                const cacheKey = friendId ? `user-${friendId}` : (companionId ? `socius-${companionId}` : context);
+
+                // Load cached messages first for instant display
+                const cached = await getCachedMessages(cacheKey);
+                if (cached.length > 0 && isActive) {
+                    const restoredMessages: IMessage[] = cached.map((m) => ({
+                        _id: m._id,
+                        text: m.text,
+                        createdAt: new Date(m.createdAt),
+                        user: m.user,
+                    }));
+                    setMessages(restoredMessages);
+                }
+
                 try {
                     let history: any[] = [];
 
@@ -172,11 +189,25 @@ export default function ChatInterface({ onClose, isModal = false, initialMessage
                             return prev;
                         });
                     } else {
-                        setMessages(formattedMessages.reverse());
+                        const reversedMessages = formattedMessages.reverse();
+                        setMessages(reversedMessages);
+                        // Cache fresh messages
+                        const toCache: CachedMessage[] = reversedMessages.map((m) => ({
+                            _id: m._id,
+                            text: m.text,
+                            createdAt: (m.createdAt instanceof Date ? m.createdAt : new Date(m.createdAt)).toISOString(),
+                            user: {
+                                _id: m.user._id,
+                                name: m.user.name,
+                                avatar: typeof m.user.avatar === 'string' ? m.user.avatar : undefined,
+                            },
+                        }));
+                        cacheMessages(cacheKey, toCache);
                     }
                     refreshNotifications();
                 } catch (error: any) {
                     console.error('Failed to fetch history:', error);
+                    // Keep showing cached data if API fails
                 }
             };
 
@@ -262,7 +293,54 @@ export default function ChatInterface({ onClose, isModal = false, initialMessage
         setMessages((previousMessages) => GiftedChat.append(previousMessages, [msg]));
     };
 
-    const renderBubble = (props: any) => (
+
+
+    const renderCustomView = useCallback((props: any) => {
+        const { currentMessage } = props;
+        if (!currentMessage || !currentMessage.text) return null;
+
+        const jsonMatch = currentMessage.text.match(/```json\n([\s\S]*?)\n```/);
+        if (jsonMatch) {
+            try {
+                const data = JSON.parse(jsonMatch[1]);
+                if (data.type === 'calorie_event') {
+                    return (
+                        <View style={{ padding: 5, width: 250 }}>
+                            <CalorieWidget
+                                food={data.food}
+                                options={data.options}
+                            />
+                        </View>
+                    );
+                }
+            } catch (e) {
+                // Ignore parse errors
+            }
+        }
+        return null;
+    }, []);
+
+    const renderMessageText = useCallback((props: any) => {
+        const { currentMessage } = props;
+        let text = currentMessage.text;
+
+        // Remove JSON block for display
+        text = text.replace(/```json\n[\s\S]*?\n```/, '').trim();
+
+        if (!text) return null; // Don't render empty text bubble if only widget exists
+
+        return (
+            <MessageText
+                {...props}
+                currentMessage={{
+                    ...currentMessage,
+                    text: text
+                }}
+            />
+        );
+    }, []);
+
+    const renderBubble = useCallback((props: any) => (
         <Bubble
             {...props}
             wrapperStyle={{
@@ -273,8 +351,67 @@ export default function ChatInterface({ onClose, isModal = false, initialMessage
                 left: { color: colors.text },
                 right: { color: colors.buttonText }
             }}
+            renderCustomView={renderCustomView}
+            renderMessageText={renderMessageText}
         />
-    );
+    ), [colors, renderCustomView, renderMessageText]);
+
+    const renderDay = useCallback((props: any) => {
+        // DayAnimated passes createdAt directly (as timestamp), inline passes via currentMessage
+        const createdAt = props.createdAt || props.currentMessage?.createdAt;
+        if (!createdAt) return null;
+
+        // Handle both timestamp number and Date/string formats
+        const date = typeof createdAt === 'number' ? new Date(createdAt) : new Date(createdAt);
+        if (isNaN(date.getTime())) return null;
+
+        const today = new Date();
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+
+        let dateText = '';
+        if (date.toDateString() === today.toDateString()) {
+            dateText = t('common.today') || 'Today';
+        } else if (date.toDateString() === yesterday.toDateString()) {
+            dateText = t('common.yesterday') || 'Yesterday';
+        } else {
+            // Use locale-appropriate date format
+            if (language === 'ko') {
+                const month = date.getMonth() + 1;
+                const day = date.getDate();
+                dateText = `${month}월 ${day}일`;
+            } else {
+                dateText = date.toLocaleDateString('en-US', {
+                    month: 'long',
+                    day: 'numeric',
+                });
+            }
+        }
+
+        // For inline days only: check if we should skip (same day as previous)
+        // Don't skip for DayAnimated (when there's no currentMessage)
+        if (props.currentMessage && props.previousMessage?.createdAt) {
+            const prevDate = new Date(props.previousMessage.createdAt);
+            if (prevDate.toDateString() === date.toDateString()) {
+                return null; // Same day, don't show date
+            }
+        }
+
+        return (
+            <View style={{ alignItems: 'center', marginVertical: 10 }}>
+                <View style={{
+                    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+                    paddingHorizontal: 12,
+                    paddingVertical: 6,
+                    borderRadius: 12
+                }}>
+                    <Text style={{ color: '#ffffff', fontSize: 12, fontWeight: '600' }}>
+                        {dateText}
+                    </Text>
+                </View>
+            </View>
+        );
+    }, [t, language, colors]);
 
     // Custom input toolbar to fix iOS 26 keyboard input issues
     const renderInputToolbar = () => (
@@ -404,8 +541,10 @@ export default function ChatInterface({ onClose, isModal = false, initialMessage
                     }}
                     isTyping={isTyping}
                     locale={language}
+                    {...{ isDayAnimationEnabled: false } as any}
                     renderBubble={renderBubble}
                     renderAvatar={renderAvatar}
+                    renderDay={renderDay}
                     renderInputToolbar={renderInputToolbar}
                     renderFooter={() => {
                         if (!isTyping) return null;
@@ -447,7 +586,14 @@ export default function ChatInterface({ onClose, isModal = false, initialMessage
                     }}
                     keyboardShouldPersistTaps="handled"
                     bottomOffset={Platform.OS === 'ios' ? 34 : 0}
-                    dateFormat={language === 'ko' ? 'M월 D일' : undefined}
+                    dateFormat={language === 'ko' ? 'D일 M월' : 'MMMM D'}
+                    dateFormatCalendar={{
+                        sameDay: language === 'ko' ? `[${t('common.today') || '오늘'}]` : '[Today]',
+                        lastDay: language === 'ko' ? `[${t('common.yesterday') || '어제'}]` : '[Yesterday]',
+                        lastWeek: language === 'ko' ? 'M[월] D[일]' : 'MMMM D',
+                        sameElse: language === 'ko' ? 'M[월] D[일]' : 'MMMM D',
+                    }}
+
                     onLongPress={(context, message) => {
                         if (message.text) {
                             Clipboard.setStringAsync(message.text);
@@ -455,6 +601,18 @@ export default function ChatInterface({ onClose, isModal = false, initialMessage
                             Alert.alert(t('common.success') || 'Success', t('chat.copy_success') || 'Text copied to clipboard');
                         }
                     }}
+                    listViewProps={{
+                        removeClippedSubviews: Platform.OS === 'android',
+                        initialNumToRender: 8,
+                        maxToRenderPerBatch: 4,
+                        windowSize: 3,
+                        updateCellsBatchingPeriod: 150,
+                        nestedScrollEnabled: true,
+                        scrollEventThrottle: 16,
+                    } as any}
+                    shouldUpdateMessage={(props, nextProps) =>
+                        props.currentMessage._id !== nextProps.currentMessage._id
+                    }
                 />
             </SafeAreaView>
         </KeyboardAvoidingView>

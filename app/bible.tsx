@@ -6,8 +6,11 @@ import { Stack, useRouter } from 'expo-router';
 import { BlurView } from 'expo-blur';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Clipboard from 'expo-clipboard';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import Reanimated, { useSharedValue, useAnimatedStyle, runOnJS, withTiming, withDelay, FadeIn, FadeOut } from 'react-native-reanimated';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
+import AppSpecificChatHead from '../components/AppSpecificChatHead';
 
 // Importing JSON data
 import niv from '../constants/bible/niv.json';
@@ -50,6 +53,7 @@ export default function BibleScreen() {
     const [selectedVerse, setSelectedVerse] = useState<number | null>(null);
     const [highlights, setHighlights] = useState<number[]>([]);
     const [isActionModalVisible, setIsActionModalVisible] = useState(false);
+    const [isZoomControlsVisible, setIsZoomControlsVisible] = useState(false); // New State
 
     // UI State
     const [isVersionPickerVisible, setIsVersionPickerVisible] = useState(false);
@@ -57,6 +61,16 @@ export default function BibleScreen() {
     const [navMode, setNavMode] = useState<'book' | 'chapter'>('book');
     const [, setIsSearchVisible] = useState(false);
     const [searchText, setSearchText] = useState('');
+
+    // Font Size Scaling
+    const [baseFontSize, setBaseFontSize] = useState(18);
+    const animatedFontSize = useSharedValue(18);
+    const zoomIndicatorOpacity = useSharedValue(0); // New Shared Value for indicator
+
+    // Convert state to shared value on load
+    useEffect(() => {
+        animatedFontSize.value = baseFontSize;
+    }, [baseFontSize]);
 
     // Header auto-hide on scroll
     const lastScrollY = useRef(0);
@@ -291,10 +305,12 @@ export default function BibleScreen() {
             const savedVersion = await AsyncStorage.getItem('bible_version');
             const savedBook = await AsyncStorage.getItem('bible_book');
             const savedChapter = await AsyncStorage.getItem('bible_chapter');
+            const savedFontSize = await AsyncStorage.getItem('bible_font_size');
 
             if (savedVersion) setSelectedVersion(savedVersion);
             if (savedBook) setSelectedBookIndex(parseInt(savedBook));
             if (savedChapter) setSelectedChapterIndex(parseInt(savedChapter));
+            if (savedFontSize) setBaseFontSize(parseFloat(savedFontSize));
         } catch (error) {
             console.error('Failed to load bible progress', error);
         } finally {
@@ -311,6 +327,82 @@ export default function BibleScreen() {
             console.error('Failed to save bible progress', error);
         }
     };
+
+    const saveFontSize = async (size: number) => {
+        try {
+            await AsyncStorage.setItem('bible_font_size', size.toString());
+        } catch (error) {
+            console.error('Failed to save font size', error);
+        }
+    };
+
+    const handleZoom = (increment: number) => {
+        const newSize = Math.min(Math.max(baseFontSize + increment, 12), 40);
+        setBaseFontSize(newSize);
+        saveFontSize(newSize);
+        // Temporarily show indicator if modifying via buttons? Maybe not needed if menu is open.
+    };
+
+    const pinchGesture = Gesture.Pinch()
+        .onStart(() => {
+            zoomIndicatorOpacity.value = withTiming(1, { duration: 200 });
+        })
+        .onUpdate((e) => {
+            animatedFontSize.value = Math.min(Math.max(baseFontSize * e.scale, 12), 40);
+        })
+        .onEnd(() => {
+            runOnJS(setBaseFontSize)(animatedFontSize.value);
+            runOnJS(saveFontSize)(animatedFontSize.value);
+            zoomIndicatorOpacity.value = withDelay(1000, withTiming(0, { duration: 500 }));
+        });
+
+    const animatedTextStyle = useAnimatedStyle(() => ({
+        fontSize: animatedFontSize.value,
+        lineHeight: animatedFontSize.value * 1.5,
+    }));
+
+    const zoomIndicatorStyle = useAnimatedStyle(() => ({
+        opacity: zoomIndicatorOpacity.value,
+    }));
+
+    const renderZoomControls = () => (
+        <Modal
+            animationType="fade"
+            transparent={true}
+            visible={isZoomControlsVisible}
+            onRequestClose={() => setIsZoomControlsVisible(false)}
+        >
+            <TouchableOpacity
+                style={styles.modalOverlay}
+                activeOpacity={1}
+                onPress={() => setIsZoomControlsVisible(false)}
+            >
+                <View style={[styles.zoomControlsCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                    <Text style={[styles.zoomTitle, { color: colors.text }]}>{t('bible.text_size') || 'Text Size'}</Text>
+
+                    <View style={styles.zoomRow}>
+                        <TouchableOpacity
+                            style={[styles.zoomBtn, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)' }]}
+                            onPress={() => handleZoom(-2)}
+                        >
+                            <Ionicons name="remove" size={24} color={colors.text} />
+                        </TouchableOpacity>
+
+                        <Text style={[styles.zoomValue, { color: colors.text }]}>
+                            {Math.round(baseFontSize)}
+                        </Text>
+
+                        <TouchableOpacity
+                            style={[styles.zoomBtn, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)' }]}
+                            onPress={() => handleZoom(2)}
+                        >
+                            <Ionicons name="add" size={24} color={colors.text} />
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </TouchableOpacity>
+        </Modal>
+    );
 
     const loadHighlights = async () => {
         try {
@@ -551,16 +643,30 @@ export default function BibleScreen() {
                         )}
                     </View>
 
-                    {/* Version selector pill */}
-                    <TouchableOpacity
-                        style={[styles.versionSelector, {
-                            backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : colors.primary + '15',
-                        }]}
-                        onPress={() => setIsVersionPickerVisible(!isVersionPickerVisible)}
-                    >
-                        <Text style={[styles.versionText, { color: colors.primary }]}>{selectedVersion}</Text>
-                        <Ionicons name="chevron-down" size={14} color={colors.primary} style={{ marginLeft: 2 }} />
-                    </TouchableOpacity>
+
+                    {/* Header Actions: Version + Zoom */}
+                    <View style={styles.headerActions}>
+                        {/* Version selector pill */}
+                        <TouchableOpacity
+                            style={[styles.versionSelector, {
+                                backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : colors.primary + '15',
+                            }]}
+                            onPress={() => setIsVersionPickerVisible(!isVersionPickerVisible)}
+                        >
+                            <Text style={[styles.versionText, { color: colors.primary }]}>{selectedVersion}</Text>
+                            <Ionicons name="chevron-down" size={14} color={colors.primary} style={{ marginLeft: 2 }} />
+                        </TouchableOpacity>
+
+                        {/* Text Size Button */}
+                        <TouchableOpacity
+                            style={[styles.iconButton, {
+                                backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)',
+                            }]}
+                            onPress={() => setIsZoomControlsVisible(true)}
+                        >
+                            <Ionicons name="text" size={18} color={colors.text} />
+                        </TouchableOpacity>
+                    </View>
                 </View>
             </Animated.View>
 
@@ -660,7 +766,7 @@ export default function BibleScreen() {
                             }}
                         >
                             <Text style={[styles.verseNumber, { color: colors.textSecondary }]}>{idx + 1}</Text>
-                            <Text style={[styles.bibleText, { color: colors.text }]}>{verse || ''}</Text>
+                            <Text style={[styles.bibleText, { color: colors.text, fontSize: baseFontSize, lineHeight: baseFontSize * 1.5 }]}>{verse || ''}</Text>
                         </TouchableOpacity>
                     ))}
                     <View style={{ height: 100 }} />
@@ -700,6 +806,7 @@ export default function BibleScreen() {
             )}
 
             {renderNavModal()}
+            {renderZoomControls()}
 
             {/* Action Modal */}
             <Modal
@@ -731,6 +838,9 @@ export default function BibleScreen() {
                     </View>
                 </TouchableOpacity>
             </Modal>
+
+            {/* Christian Friend Chat Head */}
+            <AppSpecificChatHead roleType="christian" appContext="bible" />
         </SafeAreaView>
     );
 }
@@ -800,6 +910,7 @@ const styles = StyleSheet.create({
         borderRadius: 20,
         alignItems: 'center',
         justifyContent: 'center',
+        marginRight: 8,
     },
     versionText: {
         fontWeight: '700',
@@ -861,8 +972,7 @@ const styles = StyleSheet.create({
     },
     bibleText: {
         flex: 1,
-        fontSize: 19,
-        lineHeight: 32,
+        // fontSize and lineHeight handled by animated style
         letterSpacing: 0.2,
         fontWeight: '400',
     },
@@ -1082,7 +1192,66 @@ const styles = StyleSheet.create({
         fontSize: 11,
         fontWeight: '500',
         marginTop: 1,
-        opacity: 0.8,
+    },
+    zoomControlsCard: {
+        width: '80%',
+        padding: 24,
+        borderRadius: 20,
+        alignItems: 'center',
+        borderWidth: 1,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.25,
+        shadowRadius: 10,
+        elevation: 10,
+        alignSelf: 'center',
+        marginBottom: 'auto',
+        marginTop: 'auto',
+    },
+    zoomTitle: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        marginBottom: 20,
+    },
+    zoomRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        width: '100%',
+        paddingHorizontal: 10,
+    },
+    zoomBtn: {
+        width: 50,
+        height: 50,
+        borderRadius: 25,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    zoomValue: {
+        fontSize: 24,
+        fontWeight: '600',
+        minWidth: 50,
+        textAlign: 'center',
+    },
+    iconButton: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    zoomIndicator: {
+        position: 'absolute',
+        top: '50%',
+        left: '50%',
+        marginLeft: -30,
+        marginTop: -30,
+        width: 60,
+        height: 60,
+        borderRadius: 30,
+        justifyContent: 'center',
+        alignItems: 'center',
+        zIndex: 200,
     },
     suggestionsContainer: {
         position: 'absolute',

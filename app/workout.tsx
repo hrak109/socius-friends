@@ -16,6 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
+import AppSpecificChatHead from '../components/AppSpecificChatHead';
 import dayjs from 'dayjs';
 
 // --- Types ---
@@ -428,6 +429,8 @@ export default function WorkoutScreen() {
                 </KeyboardAvoidingView>
             </Modal>
 
+            {/* Workout Friend Chat Head */}
+            <AppSpecificChatHead roleType="workout" appContext="workout" />
         </SafeAreaView>
     );
 }

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
     StyleSheet,
     View,
@@ -15,7 +15,7 @@ import {
     ActivityIndicator
 } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
 import { useUserProfile } from '../../context/UserProfileContext';
@@ -66,12 +66,16 @@ const LANGUAGES = [
 
 export default function SociusSetupScreen() {
     const router = useRouter();
+    const { preselectedRole } = useLocalSearchParams<{ preselectedRole?: string }>();
     const { colors } = useTheme();
     const { t } = useLanguage();
     const { displayName } = useUserProfile();
-    const [step, setStep] = useState<Step>('role');
+
+    // If preselectedRole is provided, skip role step
+    const initialStep: Step = preselectedRole ? 'avatar' : 'role';
+    const [step, setStep] = useState<Step>(initialStep);
     const [state, setState] = useState<SetupState>({
-        role: '',
+        role: preselectedRole || '',
         avatar: 'socius-avatar-0',
         name: '',
         intimacy: 4, // Default to Friend level (middle of 1-7)
@@ -82,6 +86,34 @@ export default function SociusSetupScreen() {
     const [avatarsLoading, setAvatarsLoading] = useState(true);
     const [, setLoadedAvatarCount] = useState(0);
     const totalAvatars = Object.keys(SOCIUS_AVATAR_MAP).length;
+    const [existingRoles, setExistingRoles] = useState<string[]>([]);
+
+    useEffect(() => {
+        const checkExistingRoles = async () => {
+            try {
+                const response = await api.get('/friends/socius');
+                const companions = response.data || [];
+                const roles = companions.map((c: any) => c.role);
+                setExistingRoles(roles);
+            } catch (error) {
+                console.log('Failed to check existing roles:', error);
+            }
+        };
+        checkExistingRoles();
+    }, []);
+
+    const filteredRoles = useMemo(() => {
+        const restricted = ['christian', 'cal_tracker', 'secrets', 'workout'];
+        return ROLES.filter(role => {
+            if (restricted.includes(role.id)) {
+                // Check if user has this role (handle legacy 'tracker' for 'cal_tracker')
+                const hasRole = existingRoles.includes(role.id) ||
+                    (role.id === 'cal_tracker' && existingRoles.includes('tracker'));
+                return !hasRole;
+            }
+            return true;
+        });
+    }, [existingRoles]);
 
     // --- Slider Logic ---
     const [sliderWidth, setSliderWidth] = useState(0);
@@ -167,7 +199,7 @@ export default function SociusSetupScreen() {
         <ScrollView contentContainerStyle={styles.gridContainer}>
             <Text style={[styles.stepTitle, { color: colors.text }]}>{t('setup.step_role_title')}</Text>
             <View style={styles.grid}>
-                {ROLES.map(role => (
+                {filteredRoles.map(role => (
                     <TouchableOpacity
                         key={role.id}
                         style={[
@@ -510,7 +542,6 @@ const styles = StyleSheet.create({
         borderRadius: 16,
         paddingHorizontal: 20,
         fontSize: 20,
-        textAlign: 'center',
     },
     sliderContainer: {
         alignItems: 'center',
