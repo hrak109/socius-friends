@@ -521,7 +521,7 @@ export default function ChatInterface({ onClose, isModal = false, initialMessage
         <KeyboardAvoidingView
             style={{ flex: 1 }}
             behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-            keyboardVerticalOffset={Platform.OS === 'ios' ? (showHeader ? 110 : 110) : 0}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? (showHeader ? 120 : 120) : 0}
         >
             <SafeAreaView
                 style={[styles.container, { backgroundColor: colors.background }]}

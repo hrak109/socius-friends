@@ -431,7 +431,7 @@ export default function SociusSetupScreen() {
             <KeyboardAvoidingView
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                 style={styles.content}
-                keyboardVerticalOffset={Platform.OS === 'ios' ? 60 : 0}
+                keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 0}
             >
                 {step === 'role' && renderRoleStep()}
                 {step === 'language' && renderLanguageStep()}

@@ -289,7 +289,7 @@ export default function WorkoutScreen() {
                 <KeyboardAvoidingView
                     behavior={Platform.OS === 'ios' ? 'padding' : undefined}
                     style={{ flex: 1 }}
-                    keyboardVerticalOffset={Platform.OS === 'ios' ? 40 : 0}
+                    keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}
                 >
                     <View style={styles.modalOverlay}>
                         <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
@@ -375,7 +375,7 @@ export default function WorkoutScreen() {
 
             {/* Add Activity Modal */}
             <Modal visible={showAddModal} animationType="slide" transparent>
-                <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }} keyboardVerticalOffset={Platform.OS === 'ios' ? 40 : 0}>
+                <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }} keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}>
                     <View style={styles.modalOverlay}>
                         <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
                             <Text style={[styles.modalTitle, { color: colors.text }]}>{t('workout.add_activity')}</Text>
