@@ -210,7 +210,7 @@ export default function CaloriesScreen() {
                 <KeyboardAvoidingView
                     behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                     style={styles.modalOverlay}
-                    keyboardVerticalOffset={Platform.OS === 'ios' ? 40 : 0}
+                    keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0}
                 >
                     <TouchableWithoutFeedback onPress={() => setModalVisible(false)}>
                         <View style={styles.modalBackdrop} />

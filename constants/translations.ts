@@ -15,6 +15,7 @@ export const translations = {
             am: 'AM',
             pm: 'PM',
             cancelled: 'Cancelled',
+            add: 'Add',
         },
         login: {
             subtitle: 'Chat with friends and AI companions',
@@ -348,6 +349,7 @@ export const translations = {
             am: '오전',
             pm: '오후',
             cancelled: '취소됨',
+            add: '추가',
         },
         login: {
             subtitle: '친구 및 AI 동반자와 채팅하세요',
@@ -385,7 +387,7 @@ export const translations = {
             clear_history: '대화 기록 삭제',
             welcome: '안녕 난 소키어스야!',
             thinking: '생각하고 있어요:)',
-            typing: '소키우스가 입력 중입니다...',
+            typing: '소키어스가 입력 중입니다...',
             copy_success: '텍스트가 클립보드에 복사되었습니다',
         },
         settings: {

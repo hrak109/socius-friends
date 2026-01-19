@@ -235,7 +235,7 @@ export default function NotesScreen() {
                     if (editingId) cancelEditing();
                 }}
             >
-                <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, backgroundColor: colors.background }} keyboardVerticalOffset={Platform.OS === 'ios' ? 40 : 0}>
+                <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, backgroundColor: colors.background }} keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0}>
                     <SafeAreaView style={{ flex: 1 }}>
                         <View style={styles.modalHeaderBar}>
                             <TouchableOpacity onPress={() => {
