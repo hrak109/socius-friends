@@ -14,23 +14,11 @@ import {
 import { Stack } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import api from '../services/api';
+import dayjs from 'dayjs';
+import { useWorkouts, Activity, PhysicalStats, ActivityLevel } from '../hooks/useWorkouts';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
 import AppSpecificChatHead from '../components/AppSpecificChatHead';
-import dayjs from 'dayjs';
-
-// --- Types ---
-
-type ActivityLevel = 'sedentary' | 'light' | 'moderate' | 'active' | 'very_active';
-
-interface PhysicalStats {
-    weight: number; // kg
-    height: number; // cm
-    age: number;
-    gender: 'male' | 'female';
-    activityLevel: ActivityLevel;
-}
 
 // Activity level multipliers (Harris-Benedict)
 const ACTIVITY_LEVELS: { key: ActivityLevel; multiplier: number; }[] = [
@@ -41,25 +29,11 @@ const ACTIVITY_LEVELS: { key: ActivityLevel; multiplier: number; }[] = [
     { key: 'very_active', multiplier: 1.9 },    // Very hard exercise, physical job
 ];
 
-interface Activity {
-    id: string;
-    name: string;
-    duration: number; // minutes
-    calories: number;
-    date: string; // ISO date string YYYY-MM-DD
-    timestamp: number; // for sorting
-}
-
-const STATS_KEY = 'user_physical_stats';
-const ACTIVITIES_KEY = 'workout_activities';
-
 export default function WorkoutScreen() {
     const { colors } = useTheme();
     const { t } = useLanguage();
 
-    // --- State ---
-    const [stats, setStats] = useState<PhysicalStats | null>(null);
-    const [activities, setActivities] = useState<Activity[]>([]);
+    const { stats, activities, loading, saveStats, addActivity, deleteActivity } = useWorkouts();
 
     // Modals
     const [showStatsModal, setShowStatsModal] = useState(false);
@@ -76,56 +50,21 @@ export default function WorkoutScreen() {
     const [durationInput, setDurationInput] = useState('');
     const [caloriesInput, setCaloriesInput] = useState('');
 
-    // --- Loading & Persistence ---
-
+    // Initialize inputs when stats load
     useEffect(() => {
-        loadData();
-    }, []);
-
-    const loadData = async () => {
-        try {
-            // Load Stats
-            try {
-                const statsRes = await api.get('/workouts/stats');
-                setStats(statsRes.data);
-                // Pre-fill form
-                setWeightInput(statsRes.data.weight?.toString() || '');
-                setHeightInput(statsRes.data.height?.toString() || '');
-                setAgeInput(statsRes.data.age?.toString() || '');
-                setGenderInput(statsRes.data.gender || 'male');
-                setActivityLevelInput(statsRes.data.activityLevel || 'moderate');
-            } catch (e: any) {
-                if (e.response && e.response.status === 404) {
-                    setShowStatsModal(true); // Prompt if no stats
-                } else {
-                    console.error('Failed to load stats', e);
-                }
-            }
-
-            // Load Activities
-            try {
-                const actRes = await api.get('/workouts/activities');
-                if (Array.isArray(actRes.data)) {
-                    const mapped = actRes.data.map((a: any) => ({
-                        id: a.client_id,
-                        name: a.name,
-                        duration: a.duration,
-                        calories: a.calories,
-                        date: a.date,
-                        timestamp: a.timestamp
-                    }));
-                    setActivities(mapped);
-                }
-            } catch (e) {
-                console.error('Failed to load activities', e);
-            }
-
-        } catch (error) {
-            console.error('Failed to load workout data', error);
+        if (stats) {
+            setWeightInput(stats.weight?.toString() || '');
+            setHeightInput(stats.height?.toString() || '');
+            setAgeInput(stats.age?.toString() || '');
+            setGenderInput(stats.gender || 'male');
+            setActivityLevelInput(stats.activityLevel || 'moderate');
+        } else if (!loading && !stats) {
+            // If finished loading and no stats, prompt user
+            setShowStatsModal(true);
         }
-    };
+    }, [stats, loading]);
 
-    const saveStats = async () => {
+    const handleSaveStats = async () => {
         if (!weightInput || !heightInput || !ageInput) return;
 
         const newStats: PhysicalStats = {
@@ -136,52 +75,17 @@ export default function WorkoutScreen() {
             activityLevel: activityLevelInput
         };
 
-        setStats(newStats);
-        try {
-            await api.post('/workouts/stats', newStats);
-        } catch (e) {
-            Alert.alert(t('common.error'), 'Failed to save stats');
-            console.error(e);
-        }
+        await saveStats(newStats);
         setShowStatsModal(false);
     };
 
-    const addActivity = async () => {
+    const handleAddActivity = async () => {
         if (!activityName || !caloriesInput) {
             Alert.alert(t('common.error'), 'Please enter name and calories');
             return;
         }
 
-        const timestamp = Date.now();
-        const clientId = `${timestamp}-${Math.floor(Math.random() * 10000)}`;
-        const dateStr = dayjs().format('YYYY-MM-DD');
-
-        const newActivity: Activity = {
-            id: clientId,
-            name: activityName,
-            duration: parseInt(durationInput) || 0,
-            calories: parseInt(caloriesInput),
-            date: dateStr,
-            timestamp: timestamp
-        };
-
-        const updatedActivities = [newActivity, ...activities];
-        setActivities(updatedActivities);
-
-        try {
-            await api.post('/workouts/activities', {
-                client_id: clientId,
-                name: activityName,
-                duration: parseInt(durationInput) || 0,
-                calories: parseInt(caloriesInput),
-                date: dateStr,
-                timestamp: timestamp
-            });
-        } catch (e) {
-            Alert.alert(t('common.error'), 'Failed to save activity');
-            console.error(e);
-            // Revert logic here if needed, but keeping it simple for now
-        }
+        await addActivity(activityName, parseInt(durationInput) || 0, parseInt(caloriesInput));
 
         // Reset & Close
         setActivityName('');
@@ -190,7 +94,7 @@ export default function WorkoutScreen() {
         setShowAddModal(false);
     };
 
-    const deleteActivity = async (id: string) => {
+    const handleDeleteActivity = (id: string) => {
         Alert.alert(
             t('workout.delete'),
             t('workout.delete_confirm'),
@@ -199,15 +103,7 @@ export default function WorkoutScreen() {
                 {
                     text: t('common.delete'),
                     style: 'destructive',
-                    onPress: async () => {
-                        const updated = activities.filter(a => a.id !== id);
-                        setActivities(updated);
-                        try {
-                            await api.delete(`/workouts/activities/${id}`);
-                        } catch (e) {
-                            console.error('Failed to delete activity', e);
-                        }
-                    }
+                    onPress: () => deleteActivity(id)
                 }
             ]
         );
@@ -218,17 +114,14 @@ export default function WorkoutScreen() {
     const bmr = useMemo(() => {
         if (!stats) return 0;
         // Mifflin-St Jeor Equation
-        // Men: 10W + 6.25H - 5A + 5
-        // Women: 10W + 6.25H - 5A - 161
         const s = stats.gender === 'male' ? 5 : -161;
         const val = (10 * stats.weight) + (6.25 * stats.height) - (5 * stats.age) + s;
         return Math.round(val);
     }, [stats]);
 
-    // TDEE = BMR × Activity Multiplier
     const tdee = useMemo(() => {
         if (!stats || !bmr) return 0;
-        const level = ACTIVITY_LEVELS.find(l => l.key === stats.activityLevel) || ACTIVITY_LEVELS[2]; // default moderate
+        const level = ACTIVITY_LEVELS.find(l => l.key === stats.activityLevel) || ACTIVITY_LEVELS[2];
         return Math.round(bmr * level.multiplier);
     }, [stats, bmr]);
 
@@ -243,7 +136,6 @@ export default function WorkoutScreen() {
 
     const dailyAverage = useMemo(() => {
         if (activities.length === 0) return 0;
-        // Collect unique dates
         const dates = new Set(activities.map(a => a.date));
         const total = activities.reduce((sum, a) => sum + a.calories, 0);
         return Math.round(total / dates.size);
@@ -256,7 +148,7 @@ export default function WorkoutScreen() {
     const renderActivityItem = ({ item }: { item: Activity }) => (
         <TouchableOpacity
             style={[styles.activityItem, { backgroundColor: colors.card }]}
-            onLongPress={() => deleteActivity(item.id)}
+            onLongPress={() => handleDeleteActivity(item.id)}
         >
             <View style={styles.activityIcon}>
                 <Ionicons name="barbell-outline" size={24} color={colors.primary} />
@@ -306,11 +198,6 @@ export default function WorkoutScreen() {
                         style={[styles.statCard, { backgroundColor: colors.card }]}
                         onPress={() => {
                             if (stats) {
-                                setWeightInput(stats.weight.toString());
-                                setHeightInput(stats.height.toString());
-                                setAgeInput(stats.age.toString());
-                                setGenderInput(stats.gender);
-                                setActivityLevelInput(stats.activityLevel || 'moderate');
                                 setShowStatsModal(true);
                             }
                         }}
@@ -325,11 +212,6 @@ export default function WorkoutScreen() {
                         style={[styles.statCard, { backgroundColor: colors.card }]}
                         onPress={() => {
                             if (stats) {
-                                setWeightInput(stats.weight.toString());
-                                setHeightInput(stats.height.toString());
-                                setAgeInput(stats.age.toString());
-                                setGenderInput(stats.gender);
-                                setActivityLevelInput(stats.activityLevel || 'moderate');
                                 setShowStatsModal(true);
                             }
                         }}
@@ -366,7 +248,7 @@ export default function WorkoutScreen() {
                         <Text style={[styles.totalUnit, { color: colors.textSecondary }]}>kcal</Text>
                     </View>
 
-                    {/* Simple Visualization Bar */}
+                    {/* Visual Bar */}
                     <View style={styles.barContainer}>
                         <View style={{ flex: bmr, backgroundColor: '#34C759', height: 8, borderTopLeftRadius: 4, borderBottomLeftRadius: 4 }} />
                         <View style={{ flex: todayActiveCalories > 0 ? todayActiveCalories : 0.1, backgroundColor: '#FF3B30', height: 8, borderTopRightRadius: 4, borderBottomRightRadius: 4 }} />
@@ -409,12 +291,8 @@ export default function WorkoutScreen() {
                     })
                 )}
 
-                {/* Spacer for FAB */}
                 <View style={{ height: 80 }} />
             </ScrollView>
-
-
-
 
             {/* Stats Modal */}
             <Modal visible={showStatsModal} animationType="slide" transparent>
@@ -527,7 +405,7 @@ export default function WorkoutScreen() {
                                     </View>
                                 </View>
 
-                                <TouchableOpacity style={[styles.saveButton, { backgroundColor: colors.primary }]} onPress={saveStats}>
+                                <TouchableOpacity style={[styles.saveButton, { backgroundColor: colors.primary }]} onPress={handleSaveStats}>
                                     <Text style={styles.saveButtonText}>{t('common.save')}</Text>
                                 </TouchableOpacity>
                             </ScrollView>
@@ -583,7 +461,7 @@ export default function WorkoutScreen() {
                                     <TouchableOpacity style={styles.cancelButton} onPress={() => setShowAddModal(false)}>
                                         <Text style={{ color: colors.text }}>{t('common.cancel')}</Text>
                                     </TouchableOpacity>
-                                    <TouchableOpacity style={[styles.saveButton, { backgroundColor: colors.primary, flex: 1, marginTop: 0 }]} onPress={addActivity}>
+                                    <TouchableOpacity style={[styles.saveButton, { backgroundColor: colors.primary, flex: 1, marginTop: 0 }]} onPress={handleAddActivity}>
                                         <Text style={styles.saveButtonText}>{t('workout.save')}</Text>
                                     </TouchableOpacity>
                                 </View>

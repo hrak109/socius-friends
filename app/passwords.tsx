@@ -3,31 +3,21 @@ import { StyleSheet, View, Text, TouchableOpacity, SectionList, Modal, TextInput
 import { Stack } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import api from '../services/api';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as Clipboard from 'expo-clipboard';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
 import AppSpecificChatHead from '../components/AppSpecificChatHead';
+import * as Clipboard from 'expo-clipboard';
 
-type PasswordAccount = {
-    id: string;
-    service: string;
-    username: string;
-    password: string;
-    group: string;
-    updated_at: number;
-    synced?: boolean;
-};
+import { usePasswords, PasswordAccount } from '../hooks/usePasswords';
 
-const STORAGE_KEY = 'user_passwords';
 const GROUPS = ['social', 'work', 'personal', 'finance', 'other'];
 
 export default function PasswordsScreen() {
+    const { accounts, loading, saveAccount, deleteAccount, refresh } = usePasswords();
+
     const { colors, isDark } = useTheme();
     const { t } = useLanguage();
-    const [accounts, setAccounts] = useState<PasswordAccount[]>([]);
-    const [loading, setLoading] = useState(true);
+
     const [modalVisible, setModalVisible] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [visiblePasswords, setVisiblePasswords] = useState<Set<string>>(new Set());
@@ -39,159 +29,19 @@ export default function PasswordsScreen() {
     const [password, setPassword] = useState('');
     const [group, setGroup] = useState('other');
 
-    useEffect(() => {
-        loadAccounts();
-    }, []);
-
-    const syncPending = async (localAccounts: PasswordAccount[]) => {
-        const pending = localAccounts.filter(a => !a.synced);
-        if (pending.length === 0) return localAccounts;
-
-        let updated = [...localAccounts];
-        let changed = false;
-
-        for (const acc of pending) {
-            try {
-                await api.post('/passwords', {
-                    client_id: acc.id,
-                    service: acc.service,
-                    username: acc.username,
-                    password: acc.password,
-                    group: acc.group,
-                    updated_at: acc.updated_at
-                });
-                updated = updated.map(a => a.id === acc.id ? { ...a, synced: true } : a);
-                changed = true;
-            } catch (e) {
-                console.log('Sync failed for password', acc.id);
-            }
-        }
-
-        if (changed) {
-            await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-            setAccounts(updated);
-        }
-        return updated;
-    };
-
-    const fetchRemote = async (currentLocal: PasswordAccount[]) => {
-        try {
-            const res = await api.get('/passwords');
-            if (Array.isArray(res.data)) {
-                const remoteMap = new Map();
-                res.data.forEach((a: any) => {
-                    remoteMap.set(a.client_id, {
-                        id: a.client_id,
-                        service: a.service,
-                        username: a.username,
-                        password: a.password,
-                        group: a.group,
-                        updated_at: a.updated_at,
-                        synced: true
-                    });
-                });
-
-                const unsyncedLocal = currentLocal.filter(a => !a.synced);
-                const remoteAccounts = Array.from(remoteMap.values());
-                const finalAccounts = [...remoteAccounts, ...unsyncedLocal.filter(a => !remoteMap.has(a.id))];
-
-                setAccounts(finalAccounts);
-                await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(finalAccounts));
-            }
-        } catch (error) {
-            console.error('Failed to load passwords remote', error);
-        }
-    };
-
-    const loadAccounts = async () => {
-        try {
-            const saved = await AsyncStorage.getItem(STORAGE_KEY);
-            let localData: PasswordAccount[] = [];
-            if (saved) {
-                localData = JSON.parse(saved);
-                setAccounts(localData);
-            }
-
-            // Sync Pending
-            const syncedData = await syncPending(localData);
-
-            // Fetch Remote
-            await fetchRemote(syncedData);
-
-        } catch (error) {
-            console.error('Failed to load passwords', error);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    // Helper to sync single account
-    const saveAccountApi = async (account: PasswordAccount) => {
-        try {
-            await api.post('/passwords', {
-                client_id: account.id,
-                service: account.service,
-                username: account.username,
-                password: account.password,
-                group: account.group,
-                updated_at: account.updated_at
-            });
-            return true;
-        } catch (e) {
-            console.error('Failed to save password online', e);
-            return false;
-        }
-    };
-
     const handleSave = async () => {
         if (!service.trim() || !password.trim()) {
             return;
         }
 
-        const now = Date.now();
-        let updatedAccounts = [...accounts];
+        await saveAccount({
+            service: service.trim(),
+            username: username.trim(),
+            password: password.trim(),
+            group
+        }, editingId || undefined);
 
-        let accountToSync: PasswordAccount;
-
-        if (editingId) {
-            // Update existing
-            updatedAccounts = updatedAccounts.map(acc =>
-                acc.id === editingId
-                    ? { ...acc, service, username, password, group, updated_at: now, synced: false }
-                    : acc
-            );
-            accountToSync = updatedAccounts.find(a => a.id === editingId)!;
-
-        } else {
-            // Add new
-            const clientId = `${now}-${Math.floor(Math.random() * 10000)}`;
-            const newAccount: PasswordAccount = {
-                id: clientId,
-                service: service.trim(),
-                username: username.trim(),
-                password: password.trim(),
-                group,
-                updated_at: now,
-                synced: false
-            };
-            updatedAccounts.push(newAccount);
-            accountToSync = newAccount;
-        }
-
-        // 1. Save Local (Optimistic)
-        setAccounts(updatedAccounts);
-        await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updatedAccounts));
         closeModal();
-
-        // 2. Sync Online
-        const success = await saveAccountApi(accountToSync);
-        if (success) {
-            setAccounts(prev => {
-                const verified = prev.map(a => a.id === accountToSync.id ? { ...a, synced: true } : a);
-                AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(verified));
-                return verified;
-            });
-        }
     };
 
     const handleDelete = (id: string) => {
@@ -203,16 +53,7 @@ export default function PasswordsScreen() {
                 {
                     text: t('passwords.delete'),
                     style: 'destructive',
-                    onPress: async () => {
-                        const updated = accounts.filter(a => a.id !== id);
-                        setAccounts(updated);
-                        await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-                        try {
-                            await api.delete(`/passwords/${id}`);
-                        } catch (e) {
-                            console.error('Failed to delete password online', e);
-                        }
-                    }
+                    onPress: () => deleteAccount(id)
                 }
             ]
         );
