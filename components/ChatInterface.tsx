@@ -171,6 +171,8 @@ export default function ChatInterface({ onClose, isModal = false, initialMessage
                         };
                     });
                     setMessages(restoredMessages);
+                    // NOTE: Don't check typing indicator here - cached messages might be stale
+                    // Only check after fetching fresh history from API below
                 }
 
                 try {
@@ -235,28 +237,39 @@ export default function ChatInterface({ onClose, isModal = false, initialMessage
                             return prev;
                         });
                     } else {
+                        // GiftedChat expects messages in reverse chronological order (newest first)
                         const reversedMessages = formattedMessages.reverse();
                         setMessages(reversedMessages);
 
-                        // Clear typing indicator if we received bot messages
-                        // Clear typing indicator if the LATEST message is from bot
-                        const latestMsg = reversedMessages[0];
-                        const isLatestFromBot = latestMsg && latestMsg.user._id !== 1;
+                        // CRITICAL: After loading history, check if bot has replied AFTER user's last message
+                        // This handles the case where messages arrive late (e.g., slow network)
+                        const lastMsg = reversedMessages[0]; // GiftedChat shows newest first
+                        if (lastMsg && lastMsg.user._id !== 1) {
+                            // Bot message exists, find the last USER message to compare timestamps
+                            const lastUserMsg = reversedMessages.find(m => m.user._id === 1);
 
-                        // ONLY clear if the bot message is NEWER than our last sent message
-                        // This prevents race conditions where history fetch returns old bot messages
-                        const isNewResponse = latestMsg && (new Date(latestMsg.createdAt).getTime() > lastUserMessageTime.current);
+                            if (lastUserMsg) {
+                                const botMessageTime = new Date(lastMsg.createdAt).getTime();
+                                const userMessageTime = new Date(lastUserMsg.createdAt).getTime();
 
-                        if (isLatestFromBot && isNewResponse && !friendId) {
-                            setIsTyping(false);
-                            setIsWaitingForResponse(false);
-                            setTyping(threadId, false);
-                            setTyping(context, false);
-                            if (responseTimeoutRef.current) clearTimeout(responseTimeoutRef.current);
+                                console.log('[TYPING DEBUG - History] Bot msg time:', botMessageTime, 'User msg time:', userMessageTime, 'Should clear?', (botMessageTime > userMessageTime));
+
+                                // Only clear if bot message is AFTER user's last message
+                                if (botMessageTime > userMessageTime) {
+                                    console.log('[TYPING DEBUG - History] Clearing typing - bot replied');
+                                    setTyping(threadId, false);
+                                    setTyping(context, false);
+                                    setIsTyping(false);
+                                    setIsWaitingForResponse(false);
+                                    if (responseTimeoutRef.current) clearTimeout(responseTimeoutRef.current);
+                                } else {
+                                    console.log('[TYPING DEBUG - History] Preserving typing - waiting for reply');
+                                }
+                            }
                         }
 
-                        // Cache fresh messages
-                        const toCache: CachedMessage[] = reversedMessages.map((m) => ({
+                        // Cache the fetched messages (use reversed for consistency)
+                        const messagesToCache: CachedMessage[] = reversedMessages.map((m) => ({
                             _id: m._id,
                             text: m.text,
                             createdAt: (m.createdAt instanceof Date ? m.createdAt : new Date(m.createdAt)).toISOString(),
@@ -266,7 +279,7 @@ export default function ChatInterface({ onClose, isModal = false, initialMessage
                                 avatar: typeof m.user.avatar === 'string' ? m.user.avatar : undefined,
                             },
                         }));
-                        cacheMessages(cacheKey, toCache);
+                        await cacheMessages(cacheKey, messagesToCache);
                     }
                     refreshNotifications();
                 } catch (error: any) {
