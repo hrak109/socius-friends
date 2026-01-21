@@ -88,17 +88,9 @@ export default function AppSpecificChatHead({ roleType, appContext }: AppSpecifi
     );
 
     // Position Handling
-    const panValue = useRef({ x: 0, y: 0 });
     const dragStart = useRef({ x: 0, y: 0 });
-
-    useEffect(() => {
-        const id = pan.addListener((value) => {
-            panValue.current = value;
-        });
-        return () => {
-            pan.removeListener(id);
-        };
-    }, []);
+    // Note: Removed panValue ref to avoid Reanimated worklet warnings
+    // Use pan.__getValue() directly when needed
 
     // Load Initial Position
     useEffect(() => {
@@ -107,19 +99,15 @@ export default function AppSpecificChatHead({ roleType, appContext }: AppSpecifi
                 const savedPos = await AsyncStorage.getItem(`chat_head_pos_${appContext}`);
                 if (savedPos) {
                     const { x, y } = JSON.parse(savedPos);
-
                     pan.setValue({ x, y });
-                    panValue.current = { x, y };
                 } else {
                     const defaultX = width - BUBBLE_SIZE - TUCK_MARGIN;
                     const defaultY = 90;
                     pan.setValue({ x: defaultX, y: defaultY });
-                    panValue.current = { x: defaultX, y: defaultY };
                 }
             } catch {
                 const defaultX = width - BUBBLE_SIZE - TUCK_MARGIN;
                 pan.setValue({ x: defaultX, y: 90 });
-                panValue.current = { x: defaultX, y: 90 };
             }
             setIsLoaded(true);
         };
@@ -132,9 +120,13 @@ export default function AppSpecificChatHead({ roleType, appContext }: AppSpecifi
             onStartShouldSetPanResponder: () => true,
             onPanResponderGrant: () => {
                 pan.stopAnimation();
-                pan.setOffset({ x: 0, y: 0 }); // Ensure offset is zero
-                // Capture start position
-                dragStart.current = { x: panValue.current.x, y: panValue.current.y };
+                pan.extractOffset(); // Extract into offset
+                // Capture start position by reading from offset
+                // @ts-ignore - Animated.ValueXY internal access
+                const offset = pan.getLayout();
+                // @ts-ignore
+                dragStart.current = { x: pan.x._offset, y: pan.y._offset };
+                pan.setValue({ x: 0, y: 0 }); // Reset value
                 isDragging.current = false;
             },
             onPanResponderMove: (_, gestureState) => {
@@ -154,8 +146,13 @@ export default function AppSpecificChatHead({ roleType, appContext }: AppSpecifi
                     return;
                 }
 
-                const currentX = panValue.current.x;
-                const currentY = panValue.current.y;
+                // Flatten offset to get final position
+                pan.flattenOffset();
+                // Get current position using internal access
+                // @ts-ignore - Animated.ValueXY internal property
+                const currentX = pan.x._value;
+                // @ts-ignore
+                const currentY = pan.y._value;
 
                 let finalX = currentX;
                 let finalY = currentY;

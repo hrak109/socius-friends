@@ -252,18 +252,13 @@ export default function ChatInterface({ onClose, isModal = false, initialMessage
                                 const botMessageTime = new Date(lastMsg.createdAt).getTime();
                                 const userMessageTime = new Date(lastUserMsg.createdAt).getTime();
 
-                                console.log('[TYPING DEBUG - History] Bot msg time:', botMessageTime, 'User msg time:', userMessageTime, 'Should clear?', (botMessageTime > userMessageTime));
-
                                 // Only clear if bot message is AFTER user's last message
                                 if (botMessageTime > userMessageTime) {
-                                    console.log('[TYPING DEBUG - History] Clearing typing - bot replied');
                                     setTyping(threadId, false);
                                     setTyping(context, false);
                                     setIsTyping(false);
                                     setIsWaitingForResponse(false);
                                     if (responseTimeoutRef.current) clearTimeout(responseTimeoutRef.current);
-                                } else {
-                                    console.log('[TYPING DEBUG - History] Preserving typing - waiting for reply');
                                 }
                             }
                         }
