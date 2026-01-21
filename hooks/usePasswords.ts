@@ -38,7 +38,7 @@ export function usePasswords() {
                 updated = updated.map(a => a.id === acc.id ? { ...a, synced: true } : a);
                 changed = true;
             } catch (e) {
-                console.log('Sync failed for password', acc.id);
+
             }
         }
 

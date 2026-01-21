@@ -50,7 +50,7 @@ export function useWorkouts() {
                 updated = updated.map(a => a.id === act.id ? { ...a, synced: true } : a);
                 changed = true;
             } catch (e) {
-                console.log('Failed to sync activity', act.id);
+
             }
         }
 
@@ -138,7 +138,7 @@ export function useWorkouts() {
         try {
             await api.post('/workouts/stats', newStats);
         } catch (e) {
-            console.log('Failed to save stats online', e);
+
         }
     }, []);
 
@@ -184,7 +184,7 @@ export function useWorkouts() {
             });
 
         } catch (e) {
-            console.log('Failed to save activity online', e);
+
         }
 
         return newActivity;

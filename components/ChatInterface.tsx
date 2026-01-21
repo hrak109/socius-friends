@@ -197,8 +197,8 @@ export default function ChatInterface({ onClose, isModal = false, initialMessage
                         let safeDate = new Date();
                         try {
                             safeDate = fixTimestamp(msg.created_at);
-                        } catch (e) {
-                            console.error('Date parse error', e);
+                        } catch {
+                            console.error('Date parse error');
                         }
 
                         let safeAvatar = user?.photo;
@@ -290,7 +290,7 @@ export default function ChatInterface({ onClose, isModal = false, initialMessage
         if (friendId) {
             // User-to-user DM: POST to /messages
             const dmThreadId = `user-${friendId}`;
-            setTyping(dmThreadId, true); // Show typing for DM recipient
+            // setTyping(dmThreadId, true); // REMOVED: Don't show typing/loading for DMs as it locks UI
 
             try {
                 await api.post('/messages', {
@@ -359,7 +359,7 @@ export default function ChatInterface({ onClose, isModal = false, initialMessage
 
 
 
-    const renderCustomView = useCallback((props: any) => {
+    const renderCustomView = useCallback(() => {
         return null; // Moved to renderMessageText to ensure bottom position
     }, []);
 
@@ -368,60 +368,62 @@ export default function ChatInterface({ onClose, isModal = false, initialMessage
         const isUser = currentMessage.user._id === 1;
         let text = currentMessage.text;
 
-        const jsonMatch = currentMessage.text.match(/```json\s*([\s\S]*?)\s*```/);
-        let widget = null;
+        const widgets: React.ReactNode[] = [];
 
-        // Remove JSON block for display
-        text = text.replace(/```json\s*[\s\S]*?\s*```/, '').trim();
+        // Global regex to match all JSON blocks (case insensitive, optional 'json' tag)
+        const jsonRegex = /```(?:json)?\s*([\s\S]*?)\s*```/gi;
+        let match;
 
-        if (jsonMatch) {
+        // Iterate through all matches
+        while ((match = jsonRegex.exec(currentMessage.text)) !== null) {
             try {
-                const data = JSON.parse(jsonMatch[1]);
-                if (data.type === 'calorie_event') {
-                    // Try multiple possible keys for food name (LLMs may vary)
-                    const foodName = data.food || data.name || data.item || data.title || 'Food';
+                const data = JSON.parse(match[1]);
+                const key = `${currentMessage._id}-widget-${widgets.length}`;
 
-                    widget = (
-                        <View style={{ padding: 5, width: 250, marginTop: 10 }}>
+                if (data.type === 'calorie_event') {
+                    const foodName = data.food || data.name || data.item || data.title || 'Food';
+                    widgets.push(
+                        <View key={key} style={{ padding: 5, width: 250, marginTop: 10 }}>
                             <CalorieWidget
                                 food={foodName}
                                 options={data.options || []}
-                                messageId={currentMessage._id}
+                                messageId={`${currentMessage._id}_${widgets.length}`}
                             />
                         </View>
                     );
                 } else if (data.type === 'workout_event') {
-                    // Try multiple possible keys for exercise name (LLMs may vary)
                     const exerciseName = data.exercise || data.name || data.activity || data.workout || 'Workout';
-
-                    widget = (
-                        <View style={{ padding: 5, width: 250, marginTop: 10 }}>
+                    widgets.push(
+                        <View key={key} style={{ padding: 5, width: 250, marginTop: 10 }}>
                             <WorkoutWidget
                                 exercise={exerciseName}
                                 duration={data.duration}
                                 options={data.options || []}
-                                messageId={currentMessage._id}
+                                messageId={`${currentMessage._id}_${widgets.length}`}
                             />
                         </View>
                     );
                 } else if (data.type === 'password_event') {
-                    widget = (
-                        <View style={{ padding: 5, width: 280, marginTop: 10 }}>
+                    widgets.push(
+                        <View key={key} style={{ padding: 5, width: 280, marginTop: 10 }}>
                             <PasswordWidget
                                 service={data.service || ''}
                                 username={data.username || ''}
                                 password={data.password || ''}
-                                messageId={currentMessage._id}
+                                messageId={`${currentMessage._id}_${widgets.length}`}
                             />
                         </View>
                     );
                 }
             } catch (e) {
-                // Ignore parse errors
+                console.warn("Failed to parse widget JSON", e);
             }
         }
 
-        if (!text && !widget) return null;
+        // Remove all JSON blocks for display text
+        text = text.replace(/```(?:json)?\s*([\s\S]*?)\s*```/gi, '').trim();
+
+        if (!text && widgets.length === 0) return null;
 
         return (
             <View>
@@ -434,7 +436,7 @@ export default function ChatInterface({ onClose, isModal = false, initialMessage
                         }}
                     />
                 ) : null}
-                {widget}
+                {widgets}
             </View>
         );
     }, []);

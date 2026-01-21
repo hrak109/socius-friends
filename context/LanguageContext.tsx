@@ -25,7 +25,7 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
                     setLanguageState(savedLanguage);
                 }
             } catch {
-                console.log('Failed to load language preference');
+
             }
         };
         loadLanguage();
@@ -36,7 +36,7 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
         try {
             await AsyncStorage.setItem('app_language', lang);
         } catch {
-            console.log('Failed to save language preference');
+
         }
     };
 

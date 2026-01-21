@@ -64,7 +64,7 @@ export async function createNotificationStream(
             errorMsg.includes('closed');
 
         if (isConnectionAbort) {
-            console.log('SSE connection closed (normal behavior)');
+
         } else {
             console.error('SSE connection error:', error);
         }
@@ -74,7 +74,7 @@ export async function createNotificationStream(
     });
 
     eventSource.addEventListener('open', () => {
-        console.log('SSE connection opened');
+
     });
 
     // Return cleanup function

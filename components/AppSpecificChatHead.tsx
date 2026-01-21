@@ -8,8 +8,7 @@ import {
     Modal,
     Dimensions,
     Animated,
-    PanResponder,
-    PanResponderGestureState
+    PanResponder
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -48,7 +47,6 @@ export default function AppSpecificChatHead({ roleType, appContext }: AppSpecifi
     const { colors } = useTheme();
     const { t } = useLanguage();
     const [friend, setFriend] = useState<SociusFriend | null>(null);
-    const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
 
     // Position State
@@ -65,7 +63,7 @@ export default function AppSpecificChatHead({ roleType, appContext }: AppSpecifi
             // Add timestamp to prevent caching
             const response = await api.get(`/friends/socius?_t=${Date.now()}`);
             const companions = response.data || [];
-            console.log(`[AppChatHead] Loaded ${companions.length} companions. Role: ${roleType}`);
+
 
             const matchingFriend = companions.find((c: SociusFriend) => {
                 if (roleType === 'cal_tracker') {
@@ -73,14 +71,13 @@ export default function AppSpecificChatHead({ roleType, appContext }: AppSpecifi
                 }
                 return c.role === roleType;
             });
-            console.log('[AppChatHead] Matching friend:', matchingFriend?.id);
+
             setFriend(matchingFriend || null);
             friendRef.current = matchingFriend || null;
         } catch (error) {
-            console.log('[AppChatHead] Failed to load Socius friend:', error);
+
             setFriend(null);
         } finally {
-            setLoading(false);
         }
     }, [roleType]);
 
@@ -110,7 +107,7 @@ export default function AppSpecificChatHead({ roleType, appContext }: AppSpecifi
                 const savedPos = await AsyncStorage.getItem(`chat_head_pos_${appContext}`);
                 if (savedPos) {
                     const { x, y } = JSON.parse(savedPos);
-                    console.log(`[AppChatHead] Loaded pos: ${x}, ${y}`);
+
                     pan.setValue({ x, y });
                     panValue.current = { x, y };
                 } else {
@@ -119,7 +116,7 @@ export default function AppSpecificChatHead({ roleType, appContext }: AppSpecifi
                     pan.setValue({ x: defaultX, y: defaultY });
                     panValue.current = { x: defaultX, y: defaultY };
                 }
-            } catch (e) {
+            } catch {
                 const defaultX = width - BUBBLE_SIZE - TUCK_MARGIN;
                 pan.setValue({ x: defaultX, y: 90 });
                 panValue.current = { x: defaultX, y: 90 };
@@ -191,7 +188,7 @@ export default function AppSpecificChatHead({ roleType, appContext }: AppSpecifi
                         `chat_head_pos_${appContext}`,
                         JSON.stringify({ x: finalX, y: finalY })
                     );
-                } catch (e) {
+                } catch {
                     console.warn('Failed to save chat head pos');
                 }
             }

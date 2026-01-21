@@ -1,19 +1,17 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, SectionList, Modal, TextInput, Alert, ActivityIndicator, Keyboard, TouchableWithoutFeedback, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+import React, { useState, useMemo } from 'react';
+import { KeyboardAvoidingView, Platform, StyleSheet, View, Text, TouchableOpacity, SectionList, Modal, TextInput, Alert, ActivityIndicator, Keyboard, TouchableWithoutFeedback, ScrollView } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { Stack } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import * as Clipboard from 'expo-clipboard';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
-import AppSpecificChatHead from '../components/AppSpecificChatHead';
-import * as Clipboard from 'expo-clipboard';
-
 import { usePasswords, PasswordAccount } from '../hooks/usePasswords';
+import AppSpecificChatHead from '../components/AppSpecificChatHead';
 
 const GROUPS = ['social', 'work', 'personal', 'finance', 'other'];
-
 export default function PasswordsScreen() {
-    const { accounts, loading, saveAccount, deleteAccount, refresh } = usePasswords();
+    const { accounts, loading, saveAccount, deleteAccount } = usePasswords();
 
     const { colors, isDark } = useTheme();
     const { t } = useLanguage();

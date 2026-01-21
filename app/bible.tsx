@@ -6,75 +6,74 @@ import { Stack, useRouter } from 'expo-router';
 import { BlurView } from 'expo-blur';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Clipboard from 'expo-clipboard';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import Reanimated, { useSharedValue, useAnimatedStyle, runOnJS, withTiming, withDelay, FadeIn, FadeOut } from 'react-native-reanimated';
 import { useTheme } from '../context/ThemeContext';
+
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import { useSharedValue, withTiming, withDelay, runOnJS } from 'react-native-reanimated';
 import { useLanguage } from '../context/LanguageContext';
+import api from '../services/api';
 import AppSpecificChatHead from '../components/AppSpecificChatHead';
 
-// Importing JSON data
-import niv from '../constants/bible/niv.json';
-import saebunyeok from '../constants/bible/saebunyeok.json';
-import gaeyeok from '../constants/bible/gaeyeok.json';
+// Import Bible Data
+import KRV from '../constants/bible/bible.json';
+import NIV from '../constants/bible/niv.json';
+import GAEYEOK from '../constants/bible/gaeyeok.json';
+import SAEBUNYEOK from '../constants/bible/saebunyeok.json';
 
-import api from '../services/api';
-
-type Book = {
+interface BibleBook {
     name: string;
     chapters: string[][];
-};
+}
 
-type BibleData = {
+interface BibleData {
     name: string;
-    books: Book[];
-};
+    books: BibleBook[];
+}
 
-const BIBLE_VERSIONS: Record<string, BibleData> = {
-    'NIV': niv as unknown as BibleData,
-    '새번역': saebunyeok as unknown as BibleData,
-    '개역개정': gaeyeok as unknown as BibleData,
-};
-
-const VERSIONS = [
-    { id: 'NIV', name: 'English NIV' },
-    { id: '새번역', name: '새번역' },
-    { id: '개역개정', name: '개역개정' },
+const BIBLE_VERSIONS: { id: string; name: string; data: BibleData }[] = [
+    { id: 'KRV', name: 'Korean Revised (KRV)', data: KRV as unknown as BibleData },
+    { id: 'NIV', name: 'New International (NIV)', data: NIV as unknown as BibleData },
+    { id: 'GAE', name: 'Gaeyeok (GAE)', data: GAEYEOK as unknown as BibleData },
+    { id: 'SAE', name: 'Saebunyeok (SAE)', data: SAEBUNYEOK as unknown as BibleData },
 ];
 
 export default function BibleScreen() {
-    const { colors, isDark, accentColor } = useTheme();
-    const router = useRouter();
-    const { t, language } = useLanguage();
     const insets = useSafeAreaInsets();
+    const { colors, isDark } = useTheme();
+    const { t, language } = useLanguage();
+    const router = useRouter();
 
-    // State
-    const [selectedVersion, setSelectedVersion] = useState('개역개정');
-    const [selectedBookIndex, setSelectedBookIndex] = useState<number>(0);
-    const [selectedChapterIndex, setSelectedChapterIndex] = useState<number>(0);
-    const [isLoading, setIsLoading] = useState(true);
+    const [isLoading, setIsLoading] = useState(true); // Default loading to true to load persistence
+    const [baseFontSize, setBaseFontSize] = useState(18);
+
+    // State Definitions
+    const [selectedVersion, setSelectedVersion] = useState<string>('NIV');
+    const [searchText, setSearchText] = useState('');
+    const [modalPosition, setModalPosition] = useState({ x: 0, y: 0, isTop: false });
+    const accentColor = colors.primary;
+
+    const currentBible = BIBLE_VERSIONS.find(v => v.id === selectedVersion)?.data || BIBLE_VERSIONS[0].data;
+
+    const [selectedBookIndex, setSelectedBookIndex] = useState(0);
+    const [selectedChapterIndex, setSelectedChapterIndex] = useState(0);
     const [selectedVerse, setSelectedVerse] = useState<number | null>(null);
-    const [highlights, setHighlights] = useState<number[]>([]);
-    const [isActionModalVisible, setIsActionModalVisible] = useState(false);
-    const [modalPosition, setModalPosition] = useState<{ x: number; y: number; isTop: boolean }>({ x: 0, y: 0, isTop: false });
-    const [christianFriend, setChristianFriend] = useState<any>(null);
-    const [isZoomControlsVisible, setIsZoomControlsVisible] = useState(false); // New State
 
-    // UI State
+    const [isSearchVisible, setIsSearchVisible] = useState(false);
+    const [highlights, setHighlights] = useState<any[]>([]);
+    const [isActionModalVisible, setIsActionModalVisible] = useState(false);
     const [isVersionPickerVisible, setIsVersionPickerVisible] = useState(false);
     const [isNavVisible, setIsNavVisible] = useState(false);
     const [navMode, setNavMode] = useState<'book' | 'chapter'>('book');
-    const [, setIsSearchVisible] = useState(false);
-    const [searchText, setSearchText] = useState('');
+    const [isZoomControlsVisible, setIsZoomControlsVisible] = useState(false);
+    const [christianFriend, setChristianFriend] = useState<any>(null);
 
-    // Font Size Scaling
-    const [baseFontSize, setBaseFontSize] = useState(18);
+    // Reanimated
+    const zoomIndicatorOpacity = useSharedValue(0);
     const animatedFontSize = useSharedValue(18);
-    const zoomIndicatorOpacity = useSharedValue(0); // New Shared Value for indicator
 
     // Convert state to shared value on load
     useEffect(() => {
-        animatedFontSize.value = baseFontSize;
-    }, [baseFontSize]);
+    }, [baseFontSize, animatedFontSize]);
 
     // Header auto-hide on scroll
     const lastScrollY = useRef(0);
@@ -120,7 +119,7 @@ export default function BibleScreen() {
 
         lastScrollY.current = currentScrollY;
     };
-    const currentBible = BIBLE_VERSIONS[selectedVersion];
+
 
     // Generate suggestions based on search text
     type Suggestion = {
@@ -138,7 +137,7 @@ export default function BibleScreen() {
         const results: Suggestion[] = [];
 
         // Find matching books
-        currentBible.books.forEach((book, bookIndex) => {
+        currentBible.books.forEach((book: BibleBook, bookIndex: number) => {
             const bookName = book.name.toLowerCase();
             if (bookName.startsWith(query) || bookName.includes(query)) {
                 // Add book suggestion
@@ -250,7 +249,7 @@ export default function BibleScreen() {
             const chapter = parseInt(bookMatch[2]) - 1;
 
             // Find book by partial name match
-            const bookIndex = currentBible.books.findIndex(b =>
+            const bookIndex = currentBible.books.findIndex((b: BibleBook) =>
                 b.name.toLowerCase().startsWith(bookName) ||
                 b.name.toLowerCase().includes(bookName)
             );
@@ -268,7 +267,7 @@ export default function BibleScreen() {
         }
 
         // If no match found, try just book name
-        const bookOnlyMatch = currentBible.books.findIndex(b =>
+        const bookOnlyMatch = currentBible.books.findIndex((b: BibleBook) =>
             b.name.toLowerCase().startsWith(trimmed.toLowerCase()) ||
             b.name.toLowerCase().includes(trimmed.toLowerCase())
         );
@@ -349,9 +348,6 @@ export default function BibleScreen() {
     };
 
     const pinchGesture = Gesture.Pinch()
-        .onStart(() => {
-            zoomIndicatorOpacity.value = withTiming(1, { duration: 200 });
-        })
         .onUpdate((e) => {
             animatedFontSize.value = Math.min(Math.max(baseFontSize * e.scale, 12), 40);
         })
@@ -361,14 +357,7 @@ export default function BibleScreen() {
             zoomIndicatorOpacity.value = withDelay(1000, withTiming(0, { duration: 500 }));
         });
 
-    const animatedTextStyle = useAnimatedStyle(() => ({
-        fontSize: animatedFontSize.value,
-        lineHeight: animatedFontSize.value * 1.5,
-    }));
 
-    const zoomIndicatorStyle = useAnimatedStyle(() => ({
-        opacity: zoomIndicatorOpacity.value,
-    }));
 
     const renderZoomControls = () => (
         <Modal
@@ -461,7 +450,7 @@ export default function BibleScreen() {
             const friend = companions.find((c: any) => c.role === 'christian');
             setChristianFriend(friend);
         } catch (error) {
-            console.log('Failed to load Christian friend', error);
+
         }
     };
 
@@ -698,7 +687,9 @@ export default function BibleScreen() {
                             }]}
                             onPress={() => setIsVersionPickerVisible(!isVersionPickerVisible)}
                         >
-                            <Text style={[styles.versionText, { color: colors.primary }]}>{selectedVersion}</Text>
+                            <Text style={[styles.versionText, { color: colors.primary }]}>
+                                {t(`bible.versions.${selectedVersion}`) || selectedVersion}
+                            </Text>
                             <Ionicons name="chevron-down" size={14} color={colors.primary} style={{ marginLeft: 2 }} />
                         </TouchableOpacity>
 
@@ -756,7 +747,7 @@ export default function BibleScreen() {
                         top: 60 + insets.top,
                     }
                 ]}>
-                    {VERSIONS.map((v, index) => (
+                    {BIBLE_VERSIONS.map((v, index) => (
                         <TouchableOpacity
                             key={v.id}
                             style={[
@@ -767,7 +758,7 @@ export default function BibleScreen() {
                                         ? (isDark ? 'rgba(255,255,255,0.05)' : colors.primary + '08')
                                         : 'transparent',
                                 },
-                                index === VERSIONS.length - 1 && { borderBottomWidth: 0 }
+                                index === BIBLE_VERSIONS.length - 1 && { borderBottomWidth: 0 }
                             ]}
                             onPress={() => {
                                 setSelectedVersion(v.id);
@@ -780,7 +771,7 @@ export default function BibleScreen() {
                                     { color: colors.text },
                                     selectedVersion === v.id && { color: colors.primary, fontWeight: '600' }
                                 ]}>
-                                    {v.name}
+                                    {t(`bible.versions.${v.id}`) || v.name}
                                 </Text>
                                 {selectedVersion === v.id && (
                                     <Ionicons name="checkmark" size={20} color={colors.primary} />
@@ -798,7 +789,7 @@ export default function BibleScreen() {
                     scrollEventThrottle={16}
                 >
                     <Text style={[styles.chapterTitle, { color: colors.text }]}>{currentBook?.name} {(validChapterIndex || 0) + 1}</Text>
-                    {currentChapter.map((verse, idx) => (
+                    {currentChapter.map((verse: string, idx: number) => (
                         <TouchableOpacity
                             key={idx}
                             style={[

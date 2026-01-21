@@ -102,7 +102,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
                     setAccentColorState(savedAccent);
                 }
             } catch {
-                console.log('Failed to load settings');
+
             }
         };
         loadSettings();
@@ -114,7 +114,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         try {
             await AsyncStorage.setItem('app_theme', newTheme);
         } catch {
-            console.log('Failed to save theme preference');
+
         }
     };
 
@@ -123,7 +123,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         try {
             await AsyncStorage.setItem('socius_avatar_preference', id);
         } catch {
-            console.log('Failed to save avatar preference');
+
         }
     };
 
@@ -132,7 +132,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         try {
             await AsyncStorage.setItem('app_accent_color', color);
         } catch {
-            console.log('Failed to save accent color');
+
         }
     };
 

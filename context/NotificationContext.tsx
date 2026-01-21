@@ -99,9 +99,9 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
             setFriendRequests(friends);
             await Notifications.setBadgeCountAsync(total);
         } catch (error: any) {
-            console.log('Failed to fetch notifications');
+
             if (error.response?.status === 401) {
-                console.log('Session expired (API 401), signing out...');
+
                 signOut();
             }
         }
@@ -118,7 +118,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
         }
 
         if (!Device.isDevice) {
-            console.log('Must use physical device for Push Notifications');
+
             return;
         }
 
@@ -129,18 +129,18 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
             finalStatus = status;
         }
         if (finalStatus !== 'granted') {
-            console.log('Failed to get push token for push notification!');
+
             return;
         }
 
         try {
             const pushTokenString = (await Notifications.getDevicePushTokenAsync()).data;
-            console.log('Generated Device Push Token:', pushTokenString);
+
 
             // Send to backend
             if (pushTokenString) {
                 await api.post('/notifications/token', { token: pushTokenString, app_id: 'socius-friends' });
-                console.log('Token sent successfully');
+
             }
         } catch (e: any) {
             console.error('Error fetching push token:', e);
@@ -150,7 +150,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     const handleNotificationResponse = useCallback((response: Notifications.NotificationResponse) => {
         const url = response.notification.request.content.data?.url as string | undefined;
         if (url && url.startsWith('socius-friends://')) {
-            console.log('Handling notification URL:', url);
+
             try {
                 const path = url.replace('socius-friends://', '');
                 const route = path.startsWith('/') ? path : `/${path}`;
@@ -164,7 +164,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
                 const isSameId = currentSegments.some(s => s === targetId);
 
                 if (isOnChat && isSameId) {
-                    console.log('Already on chat screen, ignoring deep link');
+
                     return;
                 }
 
@@ -221,7 +221,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
                             });
                             refreshNotifications();
                         } else if (event.type === 'connected') {
-                            console.log('SSE connected:', event.timestamp);
+
                         }
                     },
                     (error: any) => {
@@ -230,7 +230,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
 
                         // Check for 401 Unauthorized
                         if (xhrStatus === 401 || errorMsg.includes('401')) {
-                            console.log('Session expired (SSE 401), signing out...');
+
                             signOut();
                             return; // Stop reconnection
                         }
@@ -240,7 +240,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
                             errorMsg.includes('closed');
 
                         if (isConnectionAbort) {
-                            console.log('SSE connection closed (normal behavior), reconnecting...');
+
                         } else {
                             console.error('SSE error, will attempt reconnect:', error);
                         }
@@ -257,7 +257,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
             // App state handling for reconnection
             const handleAppStateChange = (nextAppState: AppStateStatus) => {
                 if (nextAppState === 'active') {
-                    console.log('App active, reconnecting SSE...');
+
                     // Reconnect SSE when app becomes active
                     if (sseCleanupRef.current) {
                         sseCleanupRef.current();
@@ -290,7 +290,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
             // Check for initial notification (Cold Start)
             Notifications.getLastNotificationResponseAsync().then(response => {
                 if (response) {
-                    console.log('App launched from notification (Cold Start):', response);
+
                     handleNotificationResponse(response);
                 }
             });

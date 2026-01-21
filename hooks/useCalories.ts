@@ -50,7 +50,7 @@ export function useCalories() {
                 );
                 changed = true;
             } catch (error) {
-                console.log(`Failed to sync entry ${entry.id}`, error);
+
                 // Keep synced=false/undefined
             }
         }
@@ -180,7 +180,7 @@ export function useCalories() {
                 return updated;
             });
         } catch (error) {
-            console.log('Online sync failed, saved locally');
+
             // Remains synced: false
         }
 

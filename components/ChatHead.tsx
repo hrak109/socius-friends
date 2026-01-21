@@ -111,7 +111,7 @@ export default function ChatHead() {
                 try {
                     await AsyncStorage.setItem('chat_head_pos', JSON.stringify({ x: finalX, y: finalY }));
                 } catch {
-                    console.log('Failed to save chat head pos');
+
                 }
                 isDragging.current = false;
             },

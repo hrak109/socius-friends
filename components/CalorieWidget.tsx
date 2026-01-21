@@ -49,7 +49,7 @@ export default function CalorieWidget({ food, options, messageId, onLogged }: Ca
                     setLogged(true);
                     LOGGED_CACHE.set(String(messageId), true);
                 }
-            } catch (e) {
+            } catch {
                 // Ignore
             }
         };
@@ -60,7 +60,7 @@ export default function CalorieWidget({ food, options, messageId, onLogged }: Ca
         setLoading(true);
         try {
             // Debug: log what we're passing
-            console.log('CalorieWidget handleLog - food:', food, 'calories:', calories);
+
 
             // Ensure food is a string at call time
             const foodToLog = food || 'Unknown Food';

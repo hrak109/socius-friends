@@ -136,6 +136,7 @@ export default function DiaryScreen() {
         if (titleChanged || contentChanged) {
             saveEdit(editingId, true);
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [debouncedTitle, debouncedContent]);
 
     const renderTimelineItem = ({ item, index }: { item: DiaryEntry; index: number }) => {

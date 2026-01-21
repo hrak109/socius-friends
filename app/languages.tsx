@@ -43,7 +43,6 @@ export default function LanguagesApp() {
     const { t, language: userLang } = useLanguage();
     const router = useRouter();
     const [friends, setFriends] = useState<MultilingualFriend[]>([]);
-    const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [wordIndex, setWordIndex] = useState(0); // For skipping words
 
@@ -59,7 +58,6 @@ export default function LanguagesApp() {
         } catch (error) {
             console.error('Failed to load language friends', error);
         } finally {
-            setLoading(false);
             setRefreshing(false);
         }
     }, []);

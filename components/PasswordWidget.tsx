@@ -64,7 +64,7 @@ export default function PasswordWidget({
                     setSaved(true);
                     SAVED_CACHE.set(String(messageId), true);
                 }
-            } catch (e) {
+            } catch {
                 // Ignore
             }
         };

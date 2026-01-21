@@ -82,8 +82,8 @@ export default function LoginScreen() {
             // Save language preference to backend after login
             try {
                 await api.put('/users/me', { language });
-            } catch (langError) {
-                console.log('Failed to save language to backend:', langError);
+            } catch {
+
             }
 
             // Mark onboarding as complete

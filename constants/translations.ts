@@ -183,6 +183,12 @@ export const translations = {
             search_placeholder: 'Genesis 1:5...',
             search_not_found: 'Book not found',
             text_size: 'Text Size',
+            versions: {
+                KRV: 'Korean Revised (KRV)',
+                NIV: 'New International (NIV)',
+                GAE: 'Gaeyeok (GAE)',
+                SAE: 'Saebunyeok (SAE)',
+            }
         },
 
         workout: {
@@ -549,6 +555,12 @@ export const translations = {
             search_placeholder: '창세기 1:5...',
             search_not_found: '책을 찾을 수 없습니다',
             text_size: '글씨 크기',
+            versions: {
+                KRV: '개역한글 (KRV)',
+                NIV: 'NIV (영어)',
+                GAE: '개역개정 (GAE)',
+                SAE: '새번역 (SAE)',
+            }
         },
 
         workout: {

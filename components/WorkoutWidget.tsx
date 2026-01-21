@@ -51,7 +51,7 @@ export default function WorkoutWidget({ exercise, duration, options, messageId, 
                     setLogged(true);
                     LOGGED_CACHE.set(String(messageId), true);
                 }
-            } catch (e) {
+            } catch {
                 // Ignore
             }
         };

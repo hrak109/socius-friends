@@ -98,8 +98,8 @@ export default function SociusSetupScreen() {
                 const companions = response.data || [];
                 const roles = companions.map((c: any) => c.role);
                 setExistingRoles(roles);
-            } catch (error) {
-                console.log('Failed to check existing roles:', error);
+            } catch {
+
             }
         };
         checkExistingRoles();

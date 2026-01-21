@@ -73,7 +73,7 @@ export default function ProfileScreen() {
             }
 
         } catch {
-            console.log('Failed to load backend profile');
+
         }
     };
 

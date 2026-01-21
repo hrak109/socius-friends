@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, FlatList, TextInput, ActivityIndicator, Modal, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity, TextInput, ActivityIndicator, Modal, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack } from 'expo-router';
 import { useTheme } from '../context/ThemeContext';
@@ -146,6 +146,7 @@ export default function NotesScreen() {
         if (titleChanged || contentChanged) {
             saveEdit(editingId, true);
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [debouncedTitle, debouncedContent]);
 
     const renderNoteCard = (item: NoteEntry) => (

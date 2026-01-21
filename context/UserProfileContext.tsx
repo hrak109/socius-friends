@@ -83,7 +83,7 @@ export const UserProfileProvider = ({ children }: { children: React.ReactNode })
                 if (data.custom_avatar_url) await AsyncStorage.setItem('user_display_avatar', data.custom_avatar_url);
 
             } catch {
-                console.log('API load failed, using cached data');
+
             }
         } catch (error) {
             console.error('Failed to load user profile', error);

@@ -51,7 +51,7 @@ api.interceptors.response.use(
                     return api(originalRequest);
                 }
             } catch (refreshError) {
-                console.log('Refresh token failed', refreshError);
+
                 // Fall through to return original error (which triggers logout)
             }
         }
