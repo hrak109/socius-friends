@@ -119,13 +119,9 @@ export default function AppSpecificChatHead({ roleType, appContext }: AppSpecifi
             onStartShouldSetPanResponder: () => true,
             onMoveShouldSetPanResponder: () => true,
             onPanResponderGrant: () => {
-                pan.setOffset({
-                    // @ts-ignore
-                    x: pan.x._value,
-                    // @ts-ignore
-                    y: pan.y._value
-                });
-                pan.setValue({ x: 0, y: 0 });
+                // extractOffset() atomically moves the current animated value into the offset
+                // This prevents any visual jump - it's synchronous and doesn't require a callback
+                pan.extractOffset();
                 isDragging.current = false;
             },
             onPanResponderMove: (e, gestureState) => {
@@ -306,8 +302,9 @@ export default function AppSpecificChatHead({ roleType, appContext }: AppSpecifi
 const styles = StyleSheet.create({
     chatHead: {
         position: 'absolute',
+        top: 0,
+        left: 0,
         zIndex: 1000,
-        // Removed fixed top/right, controlled by Animated.View
     },
     avatarContainer: {
         width: BUBBLE_SIZE,
