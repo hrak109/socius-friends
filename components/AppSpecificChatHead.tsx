@@ -88,7 +88,6 @@ export default function AppSpecificChatHead({ roleType, appContext }: AppSpecifi
     );
 
     // Position Handling
-    const dragStart = useRef({ x: 0, y: 0 });
     // Note: Removed panValue ref to avoid Reanimated worklet warnings
     // Use pan.__getValue() directly when needed
 
@@ -114,40 +113,38 @@ export default function AppSpecificChatHead({ roleType, appContext }: AppSpecifi
         loadPosition();
     }, [appContext]);
 
-    // Pan Responder with Absolute Positioning
+    // Pan Responder with Standard Pattern
     const panResponder = useRef(
         PanResponder.create({
             onStartShouldSetPanResponder: () => true,
+            onMoveShouldSetPanResponder: () => true,
             onPanResponderGrant: () => {
-                pan.stopAnimation();
-                pan.extractOffset(); // Extract into offset
-                // Capture start position by reading from offset
-                // @ts-ignore - Animated.ValueXY internal access
-                const offset = pan.getLayout();
-                // @ts-ignore
-                dragStart.current = { x: pan.x._offset, y: pan.y._offset };
-                pan.setValue({ x: 0, y: 0 }); // Reset value
+                pan.setOffset({
+                    // @ts-ignore
+                    x: pan.x._value,
+                    // @ts-ignore
+                    y: pan.y._value
+                });
+                pan.setValue({ x: 0, y: 0 });
                 isDragging.current = false;
             },
-            onPanResponderMove: (_, gestureState) => {
-                // Calculate absolute position manually
-                const newX = dragStart.current.x + gestureState.dx;
-                const newY = dragStart.current.y + gestureState.dy;
-                pan.setValue({ x: newX, y: newY });
+            onPanResponderMove: (e, gestureState) => {
+                if (Math.abs(gestureState.dx) > 6 || Math.abs(gestureState.dy) > 6) {
+                    isDragging.current = true;
+                }
+                return Animated.event(
+                    [null, { dx: pan.x, dy: pan.y }],
+                    { useNativeDriver: false }
+                )(e, gestureState);
             },
-            onPanResponderRelease: async (_, gestureState) => {
+            onPanResponderRelease: async () => {
                 pan.flattenOffset();
 
-                const isTap = Math.abs(gestureState.dx) < 5 && Math.abs(gestureState.dy) < 5;
-                isDragging.current = !isTap;
-
-                if (isTap) {
+                if (!isDragging.current) {
                     handlePress();
                     return;
                 }
 
-                // Flatten offset to get final position
-                pan.flattenOffset();
                 // Get current position using internal access
                 // @ts-ignore - Animated.ValueXY internal property
                 const currentX = pan.x._value;
@@ -188,6 +185,7 @@ export default function AppSpecificChatHead({ roleType, appContext }: AppSpecifi
                 } catch {
                     console.warn('Failed to save chat head pos');
                 }
+                isDragging.current = false;
             }
         })
     ).current;

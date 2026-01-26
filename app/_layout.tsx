@@ -22,9 +22,12 @@ const MessagesHeaderRight = () => {
     const router = useRouter();
 
     let avatarSource = null;
-    if (displayAvatar && PROFILE_AVATAR_MAP[displayAvatar]) {
+    if (displayAvatar && displayAvatar !== 'google' && PROFILE_AVATAR_MAP[displayAvatar]) {
         avatarSource = PROFILE_AVATAR_MAP[displayAvatar];
+    } else if (displayAvatar === 'google' && user?.photo) {
+        avatarSource = { uri: user.photo };
     } else if (user?.photo) {
+        // Fallback or default
         avatarSource = { uri: user.photo };
     }
 

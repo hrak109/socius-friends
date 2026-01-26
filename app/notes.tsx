@@ -119,10 +119,7 @@ export default function NotesScreen() {
             setEntries(updated);
 
             if (!silent) {
-                setEditingId(null);
-                setEditContent('');
-                setEditTitle('');
-                setModalVisible(false); // Ensure modal closes
+                setModalVisible(false); // Close modal on save completion if not silent
             }
         } catch (error) {
             console.error('Failed to update note:', error);
@@ -254,31 +251,30 @@ export default function NotesScreen() {
             {/* Edit/Create Modal */}
             <Modal
                 animationType="slide"
-                presentationStyle="pageSheet"
+                presentationStyle="fullScreen"
                 visible={modalVisible || !!editingId}
                 onRequestClose={() => {
                     setModalVisible(false);
                     if (editingId) cancelEditing();
                 }}
             >
-                <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, backgroundColor: colors.background }} keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0}>
+                <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, backgroundColor: colors.background }}>
                     <SafeAreaView style={{ flex: 1 }}>
                         <View style={styles.modalHeaderBar}>
-                            <TouchableOpacity onPress={() => {
-                                setModalVisible(false);
-                                if (editingId) cancelEditing();
-                            }}>
-                                <Text style={[styles.modalCancel, { color: colors.textSecondary }]}>{t('common.cancel')}</Text>
+                            <TouchableOpacity
+                                onPress={() => {
+                                    setModalVisible(false);
+                                    if (editingId) cancelEditing();
+                                }}
+                                style={{ flexDirection: 'row', alignItems: 'center' }}
+                            >
+                                <Ionicons name="chevron-back" size={24} color={colors.text} />
+                                <Text style={[styles.modalCancel, { color: colors.text, marginLeft: 4 }]}>{t('common.back')}</Text>
                             </TouchableOpacity>
-                            <Text style={[styles.modalTitleText, { color: colors.text }]}>
+                            <Text style={[styles.modalTitleText, { color: colors.text, flex: 1, textAlign: 'center' }]}>
                                 {editingId ? (isAutosaving ? t('common.saving') : t('notes.edit_entry')) : t('notes.new_entry')}
                             </Text>
-                            <TouchableOpacity
-                                onPress={editingId ? () => saveEdit(editingId, false) : handleSaveEntry}
-                                disabled={isSavingEdit}
-                            >
-                                <Text style={[styles.modalSave, { color: colors.primary }]}>{t('common.save')}</Text>
-                            </TouchableOpacity>
+                            <View style={{ width: 60 }} />
                         </View>
 
                         <ScrollView style={styles.modalBody}>
@@ -298,9 +294,20 @@ export default function NotesScreen() {
                                 onChangeText={editingId ? setEditContent : setNewContent}
                                 multiline
                                 textAlignVertical="top"
+                                scrollEnabled={false}
                             />
-
+                            <View style={{ height: 100 }} />
                         </ScrollView>
+
+                        {/* Floating Action Button for New Entries */}
+                        {!editingId && (newContent.trim().length > 0 || newTitle.trim().length > 0) && (
+                            <TouchableOpacity
+                                style={[styles.fab, { backgroundColor: colors.primary, bottom: Platform.OS === 'ios' ? 40 : 20 }]}
+                                onPress={handleSaveEntry}
+                            >
+                                <Ionicons name="checkmark" size={32} color="#fff" />
+                            </TouchableOpacity>
+                        )}
                     </SafeAreaView>
                 </KeyboardAvoidingView>
             </Modal>

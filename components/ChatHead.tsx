@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { StyleSheet, View, Image, Animated, PanResponder, Dimensions, Text } from 'react-native';
+import { StyleSheet, View, Image, Animated, PanResponder, Dimensions, Text, useWindowDimensions } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter, usePathname } from 'expo-router';
 import { SOCIUS_AVATAR_MAP } from '../constants/avatars';
@@ -7,7 +7,7 @@ import { SOCIUS_AVATAR_MAP } from '../constants/avatars';
 import { useTheme } from '../context/ThemeContext';
 import { useNotifications } from '../context/NotificationContext';
 
-const { width, height } = Dimensions.get('window');
+const { width: windowWidth, height: windowHeight } = Dimensions.get('window');
 
 export default function ChatHead() {
     const router = useRouter();
@@ -18,6 +18,7 @@ export default function ChatHead() {
     const pathnameRef = useRef(pathname);
     const { avatarId } = useTheme();
     const { sociusUnreadCount } = useNotifications();
+    const { width, height } = useWindowDimensions();
 
     // Keep pathname ref updated for PanResponder
     useEffect(() => {
@@ -59,12 +60,10 @@ export default function ChatHead() {
             onStartShouldSetPanResponder: () => true,
             onMoveShouldSetPanResponder: () => true,
             onPanResponderGrant: () => {
-                isDragging.current = false;
-                pan.setOffset({
-                    x: (pan.x as any)._value + (pan.x as any)._offset,
-                    y: (pan.y as any)._value + (pan.y as any)._offset
+                pan.stopAnimation((value) => {
+                    pan.setOffset(value);
+                    pan.setValue({ x: 0, y: 0 });
                 });
-                pan.setValue({ x: 0, y: 0 });
             },
             onPanResponderMove: (e, gestureState) => {
                 // Increased threshold from 2 to 6 to handle taps better
@@ -77,8 +76,16 @@ export default function ChatHead() {
                 )(e, gestureState);
             },
             onPanResponderRelease: async () => {
-                const currentX = (pan.x as any)._value + (pan.x as any)._offset;
-                const currentY = (pan.y as any)._value + (pan.y as any)._offset;
+                pan.flattenOffset();
+
+                // Get current value (which is now absolute position after flattenOffset)
+                // Note: accessing _value is still needed for checking bounds if we don't attach listeners,
+                // but after flattenOffset() standard .x and .y listeners would yield the full value.
+                // However, directly reading internal _value is common in RN for synchronous checks without listeners.
+                // A safer way is to rely on what the value currently represents.
+
+                const currentX = (pan.x as any)._value; // After flatten, _value is the total position
+                const currentY = (pan.y as any)._value;
 
                 const bubbleSize = 60;
                 const margin = 5;
@@ -91,8 +98,6 @@ export default function ChatHead() {
                 if (currentX > width - bubbleSize - margin) finalX = width - bubbleSize - margin;
                 if (currentY < margin + 30) finalY = margin + 30; // Top margin + status bar approx
                 if (currentY > height - bubbleSize - margin - 20) finalY = height - bubbleSize - margin - 20;
-
-                pan.flattenOffset();
 
                 // Animate to bound if needed
                 if (finalX !== currentX || finalY !== currentY) {
@@ -120,37 +125,35 @@ export default function ChatHead() {
 
     if (!isLoaded) return null;
 
-    // Hide chat head on specific screens
-    if (pathname === '/home' || pathname === '/chat' || pathname === '/') {
-        return null;
-    }
+    // Check visibility
+    const shouldHide = pathname === '/home' || pathname === '/chat' || pathname === '/';
 
     return (
-        <>
-            <Animated.View
-                {...panResponder.panHandlers}
-                style={[
-                    styles.chatHeadContainer,
-                    {
-                        transform: [{ translateX: pan.x }, { translateY: pan.y }]
-                    }
-                ]}
-            >
-                <View style={styles.avatarContainer}>
-                    <Image
-                        source={SOCIUS_AVATAR_MAP[avatarId] || SOCIUS_AVATAR_MAP['socius-icon']}
-                        style={styles.avatarImage}
-                    />
-                    {sociusUnreadCount > 0 && (
-                        <View style={styles.badge}>
-                            <Text style={styles.badgeText}>
-                                {sociusUnreadCount > 99 ? '99+' : sociusUnreadCount}
-                            </Text>
-                        </View>
-                    )}
-                </View>
-            </Animated.View>
-        </>
+        <Animated.View
+            {...panResponder.panHandlers}
+            style={[
+                styles.chatHeadContainer,
+                {
+                    transform: [{ translateX: pan.x }, { translateY: pan.y }],
+                    opacity: shouldHide ? 0 : 1 // Use opacity to hide but keep layout/state active
+                },
+                shouldHide && { pointerEvents: 'none' } // Disable interaction when hidden
+            ]}
+        >
+            <View style={styles.avatarContainer}>
+                <Image
+                    source={SOCIUS_AVATAR_MAP[avatarId] || SOCIUS_AVATAR_MAP['socius-icon']}
+                    style={styles.avatarImage}
+                />
+                {sociusUnreadCount > 0 && (
+                    <View style={styles.badge}>
+                        <Text style={styles.badgeText}>
+                            {sociusUnreadCount > 99 ? '99+' : sociusUnreadCount}
+                        </Text>
+                    </View>
+                )}
+            </View>
+        </Animated.View>
     );
 }
 
@@ -218,7 +221,7 @@ const styles = StyleSheet.create({
         bottom: 0,
     },
     protrudingChatContainer: {
-        width: width * 0.9,
+        width: '90%',
         height: '85%', // Increased height
         backgroundColor: '#fff',
         borderRadius: 20,

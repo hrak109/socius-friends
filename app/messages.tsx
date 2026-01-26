@@ -22,6 +22,7 @@ import DraggableFlatList, { ScaleDecorator, RenderItemParams } from 'react-nativ
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import TypingIndicator from '../components/TypingIndicator';
 import { getCachedThreads, cacheThreads, CachedThread } from '../services/ChatCache';
+import { DraggableAppsGrid } from '../components/DraggableAppsGrid';
 
 const APPS_ORDER_KEY = 'user_apps_order_v1';
 
@@ -59,13 +60,20 @@ export default function MessagesScreen() {
     const [threads, setThreads] = useState<ChatThread[]>([]);
     const [refreshing, setRefreshing] = useState(false);
     const [apps, setApps] = useState(DEFAULT_APPS);
+    const [isTwoRow, setIsTwoRow] = useState(false);
 
-    useEffect(() => {
-        loadAppsOrder();
-    }, []);
+    // Load apps order on focus to support immediate update from settings
+    useFocusEffect(
+        useCallback(() => {
+            loadAppsOrder();
+        }, [])
+    );
 
     const loadAppsOrder = async () => {
         try {
+            const twoRow = await AsyncStorage.getItem('user_apps_two_row');
+            setIsTwoRow(twoRow === 'true');
+
             const saved = await AsyncStorage.getItem(APPS_ORDER_KEY);
             if (saved) {
                 const savedOrder = JSON.parse(saved);
@@ -99,7 +107,7 @@ export default function MessagesScreen() {
         return (
             <ScaleDecorator>
                 <TouchableOpacity
-                    style={[styles.appItem, { opacity: isActive ? 0.5 : 1 }]}
+                    style={[styles.appItem, { opacity: isActive ? 0.5 : 1 }, isTwoRow && { marginBottom: 6, width: 70 }]}
                     onPress={() => router.push(item.route as any)}
                     onLongPress={drag}
                     disabled={isActive}
@@ -132,7 +140,7 @@ export default function MessagesScreen() {
                             <Ionicons name={item.icon as any} size={24} color="#fff" />
                         </View>
                     )}
-                    <Text style={[styles.appLabel, { color: colors.text }]}>{t(item.label)}</Text>
+                    <Text style={[styles.appLabel, { color: colors.text }]} numberOfLines={1}>{t(item.label)}</Text>
                 </TouchableOpacity>
             </ScaleDecorator>
         );
@@ -422,16 +430,24 @@ export default function MessagesScreen() {
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['bottom']}>
             {/* Apps Row (Draggable) */}
-            <View style={styles.appsContainer}>
-                <DraggableFlatList
-                    data={apps}
-                    onDragEnd={handleDragEnd}
-                    keyExtractor={(item) => item.id}
-                    renderItem={renderAppItem}
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={styles.appsContent}
-                />
+            <View style={[styles.appsContainer, isTwoRow && { height: 180 }]}>
+                {isTwoRow ? (
+                    <DraggableAppsGrid
+                        apps={apps}
+                        onOrderChange={(data) => handleDragEnd({ data })}
+                        onAppPress={(item) => router.push(item.route as any)}
+                    />
+                ) : (
+                    <DraggableFlatList
+                        data={apps}
+                        onDragEnd={handleDragEnd}
+                        keyExtractor={(item) => item.id}
+                        renderItem={renderAppItem}
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        contentContainerStyle={styles.appsContent}
+                    />
+                )}
             </View>
 
             {/* Threads List */}
@@ -571,3 +587,5 @@ const styles = StyleSheet.create({
         marginTop: 4,
     }
 });
+
+

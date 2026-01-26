@@ -111,9 +111,7 @@ export default function DiaryScreen() {
             setEntries(entries.map(e => e.id === id ? res.data : e));
 
             if (!silent) {
-                setEditingId(null);
-                setEditContent('');
-                setEditTitle('');
+                setModalVisible(false); // Close on manual save if needed, but we rely on autosave mostly
             }
         } catch (error) {
             console.error('Failed to update diary entry:', error);
@@ -168,79 +166,54 @@ export default function DiaryScreen() {
                 {/* Content Card */}
                 <View style={styles.contentColumn}>
                     <View style={[styles.card, { backgroundColor: colors.card, shadowColor: isDark ? '#000' : '#888' }]}>
-                        {isEditing ? (
-                            <View>
-                                <TextInput
-                                    style={[styles.editInput, { color: colors.text, backgroundColor: colors.inputBackground, fontWeight: '700', marginBottom: 8, minHeight: 40 }]}
-                                    placeholder={t('diary.title_placeholder')}
-                                    placeholderTextColor={colors.textSecondary}
-                                    value={editTitle}
-                                    onChangeText={setEditTitle}
-                                />
-                                <TextInput
-                                    style={[styles.editInput, { color: colors.text, backgroundColor: colors.inputBackground }]}
-                                    multiline
-                                    value={editContent}
-                                    onChangeText={setEditContent}
-                                    autoFocus
-                                />
-                                <View style={styles.editActions}>
-
-                                    <TouchableOpacity onPress={cancelEditing} disabled={isSavingEdit}>
-                                        <Text style={[styles.editText, { color: colors.textSecondary }]}>{t('common.cancel')}</Text>
-                                    </TouchableOpacity>
-                                    <TouchableOpacity onPress={() => saveEdit(item.id, false)} disabled={isSavingEdit}>
-                                        <Text style={[styles.editText, { color: colors.primary, fontWeight: 'bold' }]}>
-                                            {isAutosaving ? t('common.saving') : t('common.save')}
-                                        </Text>
-                                    </TouchableOpacity>
-                                </View>
-                            </View>
-                        ) : (
-                            <TouchableOpacity
-                                activeOpacity={0.8}
-                                onPress={() => startEditing(item)}
-                                onLongPress={() => {
-                                    Alert.alert(
-                                        t('common.delete'),
-                                        t('common.delete_confirm'),
-                                        [
-                                            { text: t('common.cancel'), style: 'cancel' },
-                                            {
-                                                text: t('common.delete'),
-                                                style: 'destructive',
-                                                onPress: async () => {
-                                                    try {
-                                                        await api.delete(`/diary/${item.id}`);
-                                                        setEntries(entries.filter(e => e.id !== item.id));
-                                                    } catch (error) {
-                                                        console.error('Failed to delete diary entry:', error);
-                                                        Alert.alert(t('common.error'), t('common.delete_failed') || 'Failed to delete');
-                                                    }
+                        <TouchableOpacity
+                            activeOpacity={0.8}
+                            onPress={() => {
+                                // Open full screen modal for editing
+                                setEditingId(item.id);
+                                setEditContent(item.content);
+                                setEditTitle(item.title || '');
+                                setModalVisible(true);
+                            }}
+                            onLongPress={() => {
+                                Alert.alert(
+                                    t('common.delete'),
+                                    t('common.delete_confirm'),
+                                    [
+                                        { text: t('common.cancel'), style: 'cancel' },
+                                        {
+                                            text: t('common.delete'),
+                                            style: 'destructive',
+                                            onPress: async () => {
+                                                try {
+                                                    await api.delete(`/diary/${item.id}`);
+                                                    setEntries(entries.filter(e => e.id !== item.id));
+                                                } catch (error) {
+                                                    console.error('Failed to delete diary entry:', error);
+                                                    Alert.alert(t('common.error'), t('common.delete_failed') || 'Failed to delete');
                                                 }
                                             }
-                                        ]
-                                    );
-                                }}
-                            >
-                                <View style={styles.cardHeader}>
-                                    {item.title ? (
-                                        <Text style={[styles.cardTitle, { color: colors.text }]} numberOfLines={1}>
-                                            {item.title}
-                                        </Text>
-                                    ) : (
-                                        <View style={{ flex: 1 }} />
-                                    )}
-                                    <Ionicons name="create-outline" size={18} color={colors.textSecondary} />
-                                </View>
-                                <Text style={[styles.cardContent, { color: colors.textSecondary }]} numberOfLines={4}>
-                                    {item.content}
-                                </Text>
-                                <Text style={[styles.cardTime, { color: colors.textSecondary }]}>
-                                    {dateObj.toLocaleTimeString(language === 'ko' ? 'ko-KR' : 'en-US', { hour: '2-digit', minute: '2-digit' })}
-                                </Text>
-                            </TouchableOpacity>
-                        )}
+                                        }
+                                    ]
+                                );
+                            }}
+                        >
+                            <View style={styles.cardHeader}>
+                                {item.title ? (
+                                    <Text style={[styles.cardTitle, { color: colors.text }]} numberOfLines={1}>
+                                        {item.title}
+                                    </Text>
+                                ) : (
+                                    <View style={{ flex: 1 }} />
+                                )}
+                            </View>
+                            <Text style={[styles.cardContent, { color: colors.textSecondary }]} numberOfLines={4}>
+                                {item.content}
+                            </Text>
+                            <Text style={[styles.cardTime, { color: colors.textSecondary }]}>
+                                {dateObj.toLocaleTimeString(language === 'ko' ? 'ko-KR' : 'en-US', { hour: '2-digit', minute: '2-digit' })}
+                            </Text>
+                        </TouchableOpacity>
                     </View>
                 </View>
             </View >
@@ -280,23 +253,34 @@ export default function DiaryScreen() {
 
 
 
-            {/* Modal - Same minimal style as Notes */}
+            {/* Modal - Full Screen Edit */}
             <Modal
                 animationType="slide"
-                presentationStyle="pageSheet"
+                presentationStyle="fullScreen"
                 visible={modalVisible}
-                onRequestClose={() => setModalVisible(false)}
+                onRequestClose={() => {
+                    setModalVisible(false);
+                    if (editingId) cancelEditing();
+                }}
             >
-                <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, backgroundColor: colors.background }} keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0}>
+                <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, backgroundColor: colors.background }}>
                     <SafeAreaView style={{ flex: 1 }}>
                         <View style={styles.modalHeaderBar}>
-                            <TouchableOpacity onPress={() => setModalVisible(false)}>
-                                <Text style={[styles.modalCancel, { color: colors.textSecondary }]}>{t('common.cancel')}</Text>
+                            <TouchableOpacity
+                                onPress={() => {
+                                    setModalVisible(false);
+                                    if (editingId) cancelEditing();
+                                }}
+                                style={{ flexDirection: 'row', alignItems: 'center' }}
+                            >
+                                <Ionicons name="chevron-back" size={24} color={colors.text} />
+                                <Text style={[styles.modalCancel, { color: colors.text, marginLeft: 4 }]}>{t('common.back')}</Text>
                             </TouchableOpacity>
-                            <Text style={[styles.modalTitleText, { color: colors.text }]}>{t('diary.new_entry')}</Text>
-                            <TouchableOpacity onPress={handleSaveEntry}>
-                                <Text style={[styles.modalSave, { color: colors.primary }]}>{t('common.save')}</Text>
-                            </TouchableOpacity>
+                            <Text style={[styles.modalTitleText, { color: colors.text }]}>
+                                {editingId ? (isAutosaving ? t('common.saving') : t('diary.title')) : t('diary.new_entry')}
+                            </Text>
+                            {/* Hidden Spacer for alignment */}
+                            <View style={{ width: 60 }} />
                         </View>
 
                         <ScrollView style={styles.modalBody}>
@@ -304,8 +288,8 @@ export default function DiaryScreen() {
                                 style={[styles.modalInputTitle, { color: colors.text, borderBottomColor: colors.border }]}
                                 placeholder={t('diary.title_placeholder')}
                                 placeholderTextColor={colors.textSecondary}
-                                value={newTitle}
-                                onChangeText={setNewTitle}
+                                value={editingId ? editTitle : newTitle}
+                                onChangeText={editingId ? setEditTitle : setNewTitle}
                             />
                             <TextInput
                                 style={[styles.modalInputContent, { color: colors.text }]}
@@ -313,11 +297,30 @@ export default function DiaryScreen() {
                                 placeholderTextColor={colors.textSecondary}
                                 multiline
                                 textAlignVertical="top"
-                                value={newContent}
-                                onChangeText={setNewContent}
+                                value={editingId ? editContent : newContent}
+                                onChangeText={editingId ? setEditContent : setNewContent}
+                                scrollEnabled={false} // Let parent ScrollView handle it
                             />
+                            {/* Add bottom padding for keyboard */}
+                            <View style={{ height: 100 }} />
                         </ScrollView>
+                        {/* If not editing (new entry), we might need a manual save button? 
+                            The user requested "Remove 저장 취소 button in diary and notes since it's autosave anyway".
+                            But for NEW entries, autosave typically doesn't start until creation.
+                            Let's assume we autosave new entries OR keep a floating save button for new ones.
+                            Actually, for new entries, user probably expects "Done" or auto-creation.
+                            Let's add a "Save" button only if it's NEW entry, or autosave on back.
+                            Let's implement autosave on back for new entry too if content exists.
+                        */}
                     </SafeAreaView>
+                    {!editingId && (newContent.trim().length > 0 || newTitle.trim().length > 0) && (
+                        <TouchableOpacity
+                            style={[styles.fab, { backgroundColor: colors.primary, bottom: Platform.OS === 'ios' ? 40 : 20 }]}
+                            onPress={handleSaveEntry}
+                        >
+                            <Ionicons name="checkmark" size={32} color="#fff" />
+                        </TouchableOpacity>
+                    )}
                 </KeyboardAvoidingView>
             </Modal>
         </SafeAreaView>
