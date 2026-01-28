@@ -52,7 +52,7 @@ export function useChat({
     const currentUser: User = useMemo(() => {
         let avatarSource;
         if (displayAvatar === 'google') {
-            avatarSource = user?.photo || undefined;
+            avatarSource = user?.photo ? { uri: user.photo } : undefined;
         } else if (displayAvatar && PROFILE_AVATAR_MAP[displayAvatar]) {
             avatarSource = PROFILE_AVATAR_MAP[displayAvatar];
         } else if (displayAvatar && displayAvatar.startsWith('http')) {
