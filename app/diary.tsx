@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, FlatList, TextInput, ActivityIndicator, Modal, KeyboardAvoidingView, Platform, ScrollView, Alert } from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity, FlatList, TextInput, ActivityIndicator, Modal, KeyboardAvoidingView, Platform, ScrollView, Alert, Keyboard } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack } from 'expo-router';
 import { useTheme } from '@/context/ThemeContext';
@@ -34,8 +34,16 @@ export default function DiaryScreen() {
 
     // Modal States
     const [modalVisible, setModalVisible] = useState(false);
-    const [newTitle, setNewTitle] = useState('');
-    const [newContent, setNewContent] = useState('');
+    const [isKeyboardVisible, setKeyboardVisible] = useState(false);
+
+    useEffect(() => {
+        const showSubscription = Keyboard.addListener(Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow', () => setKeyboardVisible(true));
+        const hideSubscription = Keyboard.addListener(Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide', () => setKeyboardVisible(false));
+        return () => {
+            showSubscription.remove();
+            hideSubscription.remove();
+        };
+    }, []);
 
     const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
 
@@ -65,25 +73,6 @@ export default function DiaryScreen() {
         fetchEntries();
     }, []);
 
-    const handleSaveEntry = async () => {
-        if (newContent.trim() === '') return;
-
-        try {
-            const today = new Date().toISOString();
-            const res = await api.post('/diary', {
-                content: newContent,
-                title: newTitle.trim() === '' ? undefined : newTitle,
-                date: today
-            });
-
-            setEntries([res.data, ...entries]);
-            setNewTitle('');
-            setNewContent('');
-            setModalVisible(false);
-        } catch (error) {
-            console.error('Failed to save diary entry:', error);
-        }
-    };
 
     const startEditing = (entry: DiaryEntry) => {
         setEditingId(entry.id);
@@ -121,18 +110,46 @@ export default function DiaryScreen() {
         }
     };
 
+    const createEntry = async () => {
+        if (editContent.trim() === '' && editTitle.trim() === '') return;
+        setIsAutosaving(true);
+        try {
+            const today = new Date().toISOString();
+            const res = await api.post('/diary', {
+                content: editContent,
+                title: editTitle.trim() === '' ? undefined : editTitle,
+                date: today
+            });
+
+            const newDiary = res.data;
+            setEditingId(newDiary.id);
+            setEntries(prev => [newDiary, ...prev]);
+        } catch (error) {
+            console.error('Failed to create diary entry:', error);
+        } finally {
+            setIsAutosaving(false);
+        }
+    };
+
     // Autosave Effect
     useEffect(() => {
-        if (!editingId) return;
-        const currentEntry = entries.find(e => e.id === editingId);
-        if (!currentEntry) return;
+        if (!modalVisible && !editingId) return;
 
-        // Check if changed
-        const titleChanged = (debouncedTitle || '').trim() !== (currentEntry.title || '').trim();
-        const contentChanged = debouncedContent.trim() !== currentEntry.content.trim();
+        if (editingId) {
+            const currentEntry = entries.find(e => e.id === editingId);
+            if (!currentEntry) return;
 
-        if (titleChanged || contentChanged) {
-            saveEdit(editingId, true);
+            const titleChanged = (debouncedTitle || '').trim() !== (currentEntry.title || '').trim();
+            const contentChanged = debouncedContent.trim() !== currentEntry.content.trim();
+
+            if (titleChanged || contentChanged) {
+                saveEdit(editingId, true);
+            }
+        } else {
+            // New entry creation
+            if (debouncedContent.trim() !== '' || debouncedTitle.trim() !== '') {
+                createEntry();
+            }
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [debouncedTitle, debouncedContent]);
@@ -225,7 +242,12 @@ export default function DiaryScreen() {
             <Stack.Screen options={{
                 title: t('diary.title'),
                 headerRight: () => (
-                    <TouchableOpacity onPress={() => setModalVisible(true)} style={{ paddingRight: 8 }}>
+                    <TouchableOpacity onPress={() => {
+                        setEditingId(null);
+                        setEditTitle('');
+                        setEditContent('');
+                        setModalVisible(true);
+                    }} style={{ paddingRight: 8 }}>
                         <Ionicons name="add-circle" size={28} color={colors.primary} />
                     </TouchableOpacity>
                 ),
@@ -259,8 +281,12 @@ export default function DiaryScreen() {
                 presentationStyle="fullScreen"
                 visible={modalVisible}
                 onRequestClose={() => {
-                    setModalVisible(false);
-                    if (editingId) cancelEditing();
+                    if (Platform.OS === 'android' && isKeyboardVisible) {
+                        Keyboard.dismiss();
+                    } else {
+                        setModalVisible(false);
+                        if (editingId) cancelEditing();
+                    }
                 }}
             >
                 <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, backgroundColor: colors.background }}>
@@ -288,8 +314,8 @@ export default function DiaryScreen() {
                                 style={[styles.modalInputTitle, { color: colors.text, borderBottomColor: colors.border }]}
                                 placeholder={t('diary.title_placeholder')}
                                 placeholderTextColor={colors.textSecondary}
-                                value={editingId ? editTitle : newTitle}
-                                onChangeText={editingId ? setEditTitle : setNewTitle}
+                                value={editTitle}
+                                onChangeText={setEditTitle}
                             />
                             <TextInput
                                 style={[styles.modalInputContent, { color: colors.text }]}
@@ -297,29 +323,18 @@ export default function DiaryScreen() {
                                 placeholderTextColor={colors.textSecondary}
                                 multiline
                                 textAlignVertical="top"
-                                value={editingId ? editContent : newContent}
-                                onChangeText={editingId ? setEditContent : setNewContent}
+                                value={editContent}
+                                onChangeText={setEditContent}
                                 scrollEnabled={false} // Let parent ScrollView handle it
                             />
                             {/* Add bottom padding for keyboard */}
                             <View style={{ height: 100 }} />
                         </ScrollView>
-                        {/* If not editing (new entry), we might need a manual save button? 
-                            The user requested "Remove 저장 취소 button in diary and notes since it's autosave anyway".
-                            But for NEW entries, autosave typically doesn't start until creation.
-                            Let's assume we autosave new entries OR keep a floating save button for new ones.
-                            Actually, for new entries, user probably expects "Done" or auto-creation.
-                            Let's add a "Save" button only if it's NEW entry, or autosave on back.
-                            Let's implement autosave on back for new entry too if content exists.
-                        */}
                     </SafeAreaView>
-                    {!editingId && (newContent.trim().length > 0 || newTitle.trim().length > 0) && (
-                        <TouchableOpacity
-                            style={[styles.fab, { backgroundColor: colors.primary, bottom: Platform.OS === 'ios' ? 40 : 20 }]}
-                            onPress={handleSaveEntry}
-                        >
-                            <Ionicons name="checkmark" size={32} color="#fff" />
-                        </TouchableOpacity>
+                    {(editContent.trim().length > 0 || editTitle.trim().length > 0) && (
+                        <View style={{ padding: 10, alignItems: 'center' }}>
+                            <Text style={{ color: colors.textSecondary, fontSize: 12 }}>{isAutosaving ? t('common.saving') : 'Autosave enabled'}</Text>
+                        </View>
                     )}
                 </KeyboardAvoidingView>
             </Modal>

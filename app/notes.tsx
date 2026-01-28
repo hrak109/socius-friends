@@ -1,5 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, TextInput, ActivityIndicator, Modal, KeyboardAvoidingView, Platform, ScrollView, Alert } from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity, TextInput, ActivityIndicator, Modal, KeyboardAvoidingView, Platform, Alert, Keyboard, ScrollView, Dimensions } from 'react-native';
+import DraggableFlatList, { ScaleDecorator, RenderItemParams } from 'react-native-draggable-flatlist';
+
+const { width } = Dimensions.get('window');
+const COLUMN_WIDTH = (width - 40) / 2; // 16px side margins + 8px gap
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack } from 'expo-router';
 import { useTheme } from '@/context/ThemeContext';
@@ -13,6 +17,7 @@ type NoteEntry = {
     date: string;
     content: string;
     title?: string;
+    position: number;
     created_at: string;
     updated_at: string;
 };
@@ -37,8 +42,16 @@ export default function NotesScreen() {
 
     // Modal states
     const [modalVisible, setModalVisible] = useState(false);
-    const [newTitle, setNewTitle] = useState('');
-    const [newContent, setNewContent] = useState('');
+    const [isKeyboardVisible, setKeyboardVisible] = useState(false);
+
+    useEffect(() => {
+        const showSubscription = Keyboard.addListener(Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow', () => setKeyboardVisible(true));
+        const hideSubscription = Keyboard.addListener(Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide', () => setKeyboardVisible(false));
+        return () => {
+            showSubscription.remove();
+            hideSubscription.remove();
+        };
+    }, []);
 
     const fetchEntries = async () => {
         try {
@@ -70,26 +83,6 @@ export default function NotesScreen() {
         }
     }, [searchQuery, entries]);
 
-    const handleSaveEntry = async () => {
-        if (newContent.trim() === '') return;
-
-        try {
-            const today = new Date().toISOString();
-            const res = await api.post('/notes', {
-                content: newContent,
-                title: newTitle.trim() === '' ? 'Untitled' : newTitle,
-                date: today
-            });
-
-            const updated = [res.data, ...entries];
-            setEntries(updated);
-            setNewTitle('');
-            setNewContent('');
-            setModalVisible(false);
-        } catch (error) {
-            console.error('Failed to save note:', error);
-        }
-    };
 
     const startEditing = (entry: NoteEntry) => {
         setEditingId(entry.id);
@@ -115,7 +108,7 @@ export default function NotesScreen() {
                 title: editTitle
             });
 
-            const updated = entries.map(e => e.id === id ? res.data : e);
+            const updated = entries.map((e: NoteEntry) => e.id === id ? res.data : e);
             setEntries(updated);
 
             if (!silent) {
@@ -129,75 +122,109 @@ export default function NotesScreen() {
         }
     };
 
+    const createEntry = async () => {
+        if (editContent.trim() === '' && editTitle.trim() === '') return;
+        setIsAutosaving(true);
+        try {
+            const today = new Date().toISOString();
+            const res = await api.post('/notes', {
+                content: editContent,
+                title: editTitle.trim() === '' ? 'Untitled' : editTitle,
+                date: today
+            });
+
+            const newNote = res.data;
+            setEditingId(newNote.id);
+            setEntries((prev: NoteEntry[]) => [newNote, ...prev]);
+        } catch (error) {
+            console.error('Failed to create note:', error);
+        } finally {
+            setIsAutosaving(false);
+        }
+    };
+
     // Autosave Effect
     useEffect(() => {
-        if (!editingId) return;
-        const currentEntry = entries.find(e => e.id === editingId);
-        if (!currentEntry) return;
+        if (!modalVisible && !editingId) return;
 
-        // Check if changed compared to SAVED entry
-        // We use debounced values to determine if we should save
-        const titleChanged = (debouncedTitle || '').trim() !== (currentEntry.title || '').trim();
-        const contentChanged = debouncedContent.trim() !== currentEntry.content.trim();
+        if (editingId) {
+            const currentEntry = entries.find((e: NoteEntry) => e.id === editingId);
+            if (!currentEntry) return;
 
-        if (titleChanged || contentChanged) {
-            saveEdit(editingId, true);
+            const titleChanged = (debouncedTitle || '').trim() !== (currentEntry.title || '').trim();
+            const contentChanged = debouncedContent.trim() !== currentEntry.content.trim();
+
+            if (titleChanged || contentChanged) {
+                saveEdit(editingId, true);
+            }
+        } else {
+            // New entry creation
+            if (debouncedContent.trim() !== '' || debouncedTitle.trim() !== '') {
+                createEntry();
+            }
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [debouncedTitle, debouncedContent]);
 
-    const renderNoteCard = (item: NoteEntry) => (
-        <TouchableOpacity
-            key={item.id}
-            activeOpacity={0.9}
-            onPress={() => startEditing(item)}
-            onLongPress={() => {
-                Alert.alert(
-                    t('common.delete'),
-                    t('common.delete_confirm'),
-                    [
-                        { text: t('common.cancel'), style: 'cancel' },
-                        {
-                            text: t('common.delete'),
-                            style: 'destructive',
-                            onPress: async () => {
-                                try {
-                                    await api.delete(`/notes/${item.id}`);
-                                    setEntries(entries.filter(e => e.id !== item.id));
-                                    setFilteredEntries(filteredEntries.filter(e => e.id !== item.id));
-                                } catch (error) {
-                                    console.error('Failed to delete note:', error);
-                                    Alert.alert(t('common.error'), t('common.delete_failed') || 'Failed to delete');
-                                }
-                            }
-                        }
-                    ]
-                );
-            }}
-            style={[styles.noteCard, { backgroundColor: colors.card, shadowColor: isDark ? '#000' : '#888' }]}
-        >
-            <Text style={[styles.noteTitle, { color: colors.text }]} numberOfLines={2}>
-                {item.title || 'Untitled'}
-            </Text>
-            <Text style={[styles.notePreview, { color: colors.textSecondary }]} numberOfLines={8}>
-                {item.content}
-            </Text>
-            <Text style={[styles.noteDate, { color: colors.textSecondary }]}>
-                {new Date(item.updated_at || item.created_at).toLocaleDateString(language === 'ko' ? 'ko-KR' : 'en-US', { month: 'short', day: 'numeric' })}
-            </Text>
-        </TouchableOpacity>
+    const handleReorder = async (newData: NoteEntry[]) => {
+        setEntries(newData);
+        try {
+            await api.put('/notes/reorder', {
+                note_ids: newData.map(n => parseInt(n.id))
+            });
+        } catch (error) {
+            console.error('Failed to sync note order:', error);
+            Alert.alert(t('common.error'), 'Failed to save note order');
+        }
+    };
+
+    const renderDraggableItem = ({ item, drag, isActive }: RenderItemParams<NoteEntry>) => (
+        <ScaleDecorator>
+            <TouchableOpacity
+                activeOpacity={0.9}
+                onPress={() => startEditing(item)}
+                onLongPress={drag}
+                disabled={isActive}
+                style={[
+                    styles.noteCard,
+                    {
+                        backgroundColor: colors.card,
+                        shadowColor: isDark ? '#000' : '#888',
+                        opacity: isActive ? 0.8 : 1,
+                        transform: [{ scale: isActive ? 1.05 : 1 }]
+                    }
+                ]}
+            >
+                <View style={styles.noteHeader}>
+                    <Text style={[styles.noteTitle, { color: colors.text, flex: 1 }]} numberOfLines={2}>
+                        {item.title || 'Untitled'}
+                    </Text>
+                    <Ionicons name="menu" size={20} color={colors.textSecondary} style={{ opacity: 0.5 }} />
+                </View>
+                <Text style={[styles.notePreview, { color: colors.textSecondary }]} numberOfLines={4}>
+                    {item.content}
+                </Text>
+                <View style={styles.noteFooter}>
+                    <Text style={[styles.noteDate, { color: colors.textSecondary }]}>
+                        {new Date(item.updated_at || item.created_at).toLocaleDateString(language === 'ko' ? 'ko-KR' : 'en-US', { month: 'short', day: 'numeric' })}
+                    </Text>
+                </View>
+            </TouchableOpacity>
+        </ScaleDecorator>
     );
 
-    // Split for Masonry Layout
-    const leftColumn = filteredEntries.filter((_, i) => i % 2 === 0);
-    const rightColumn = filteredEntries.filter((_, i) => i % 2 !== 0);
 
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['bottom', 'left', 'right']}>
             <Stack.Screen options={{
                 title: t('notes.title'),
                 headerRight: () => (
-                    <TouchableOpacity onPress={() => setModalVisible(true)} style={{ paddingRight: 8 }}>
+                    <TouchableOpacity onPress={() => {
+                        setEditingId(null);
+                        setEditTitle('');
+                        setEditContent('');
+                        setModalVisible(true);
+                    }} style={{ paddingRight: 8 }}>
                         <Ionicons name="add-circle" size={28} color={colors.primary} />
                     </TouchableOpacity>
                 ),
@@ -226,23 +253,22 @@ export default function NotesScreen() {
                         <ActivityIndicator size="large" color={colors.primary} />
                     </View>
                 ) : (
-                    <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-                        {filteredEntries.length === 0 ? (
+                    <DraggableFlatList
+                        data={filteredEntries}
+                        onDragEnd={({ data }) => handleReorder(data)}
+                        keyExtractor={(item) => item.id}
+                        renderItem={renderDraggableItem}
+                        contentContainerStyle={styles.scrollContent}
+                        showsVerticalScrollIndicator={false}
+                        numColumns={2}
+                        columnWrapperStyle={styles.columnWrapper}
+                        ListEmptyComponent={
                             <View style={styles.emptyState}>
                                 <Ionicons name="document-text-outline" size={64} color={colors.textSecondary} style={{ opacity: 0.5 }} />
                                 <Text style={[styles.emptyText, { color: colors.textSecondary }]}>{t('notes.no_entries')}</Text>
                             </View>
-                        ) : (
-                            <View style={styles.masonryContainer}>
-                                <View style={styles.column}>
-                                    {leftColumn.map(renderNoteCard)}
-                                </View>
-                                <View style={styles.column}>
-                                    {rightColumn.map(renderNoteCard)}
-                                </View>
-                            </View>
-                        )}
-                    </ScrollView>
+                        }
+                    />
                 )
             }
 
@@ -254,8 +280,12 @@ export default function NotesScreen() {
                 presentationStyle="fullScreen"
                 visible={modalVisible || !!editingId}
                 onRequestClose={() => {
-                    setModalVisible(false);
-                    if (editingId) cancelEditing();
+                    if (Platform.OS === 'android' && isKeyboardVisible) {
+                        Keyboard.dismiss();
+                    } else {
+                        setModalVisible(false);
+                        if (editingId) cancelEditing();
+                    }
                 }}
             >
                 <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, backgroundColor: colors.background }}>
@@ -282,16 +312,16 @@ export default function NotesScreen() {
                                 style={[styles.modalInputTitle, { color: colors.text }]}
                                 placeholder={t('notes.title_placeholder')}
                                 placeholderTextColor={colors.textSecondary}
-                                value={editingId ? editTitle : newTitle}
-                                onChangeText={editingId ? setEditTitle : setNewTitle}
+                                value={editTitle}
+                                onChangeText={setEditTitle}
                                 multiline
                             />
                             <TextInput
                                 style={[styles.modalInputContent, { color: colors.text }]}
                                 placeholder={t('notes.content_placeholder')}
                                 placeholderTextColor={colors.textSecondary}
-                                value={editingId ? editContent : newContent}
-                                onChangeText={editingId ? setEditContent : setNewContent}
+                                value={editContent}
+                                onChangeText={setEditContent}
                                 multiline
                                 textAlignVertical="top"
                                 scrollEnabled={false}
@@ -299,16 +329,12 @@ export default function NotesScreen() {
                             <View style={{ height: 100 }} />
                         </ScrollView>
 
-                        {/* Floating Action Button for New Entries */}
-                        {!editingId && (newContent.trim().length > 0 || newTitle.trim().length > 0) && (
-                            <TouchableOpacity
-                                style={[styles.fab, { backgroundColor: colors.primary, bottom: Platform.OS === 'ios' ? 40 : 20 }]}
-                                onPress={handleSaveEntry}
-                            >
-                                <Ionicons name="checkmark" size={32} color="#fff" />
-                            </TouchableOpacity>
-                        )}
                     </SafeAreaView>
+                    {(editContent.trim().length > 0 || editTitle.trim().length > 0) && (
+                        <View style={{ padding: 10, alignItems: 'center' }}>
+                            <Text style={{ color: colors.textSecondary, fontSize: 12 }}>{isAutosaving ? t('common.saving') : 'Autosave enabled'}</Text>
+                        </View>
+                    )}
                 </KeyboardAvoidingView>
             </Modal>
 
@@ -356,22 +382,31 @@ const styles = StyleSheet.create({
         paddingTop: 10,
         paddingBottom: 100,
     },
-    masonryContainer: {
-        flexDirection: 'row',
-        paddingHorizontal: 8,
-    },
-    column: {
-        flex: 1,
-        paddingHorizontal: 4,
-    },
     noteCard: {
         borderRadius: 16,
         padding: 16,
-        marginBottom: 8,
+        marginBottom: 12,
         shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.08,
+        shadowOpacity: 0.1,
         shadowRadius: 8,
         elevation: 2,
+        width: COLUMN_WIDTH,
+        height: 180, // Fixed height for equal-sized grid
+        backgroundColor: '#fff', // Safety default
+    },
+    columnWrapper: {
+        paddingHorizontal: 16,
+        justifyContent: 'space-between',
+    },
+    noteHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 8,
+    },
+    noteFooter: {
+        marginTop: 'auto', // Push footer to the bottom of the fixed-height card
+        flexDirection: 'row',
+        justifyContent: 'flex-end',
     },
     noteTitle: {
         fontSize: 17,
