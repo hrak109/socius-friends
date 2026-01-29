@@ -1,99 +1,315 @@
 
-> socius-friends@1.0.0 test
-> jest hooks/__tests__/useWorkouts.test.ts
+> socius-friends@1.0.0 test:coverage
+> jest --coverage
 
-FAIL hooks/__tests__/useWorkouts.test.ts
-  useWorkouts hook
-    ✓ initializes and loads data from local storage and remote (24 ms)
-    ✓ saves physical stats and syncs to backend (7 ms)
-    ✕ adds a workout activity and syncs to backend (5 ms)
-    ✓ deletes a workout activity (2 ms)
+PASS utils/__tests__/date.test.ts
+PASS utils/__tests__/NotificationCleaning.test.ts
+PASS hooks/__tests__/useDebounce.test.ts
+PASS hooks/__tests__/useWorkouts.test.ts
+PASS hooks/__tests__/usePasswords.test.ts
+  ● Console
 
-  ● useWorkouts hook › adds a workout activity and syncs to backend
+    console.error
+      An update to HookContainer inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
 
-    expect(received).toContainEqual(expected) // deep equality
+      71 |                 const finalAccounts = [...remoteAccounts, ...unsyncedLocal.filter(a => !remoteMap.has(a.id))];
+      72 |
+    > 73 |                 setAccounts(finalAccounts);
+         |                 ^
+      74 |                 await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(finalAccounts));
+      75 |             }
+      76 |         } catch (error) {
 
-    Expected value: ObjectContaining {"calories": 150, "duration": 45, "name": "Yoga", "synced": true}
-    Received array: []
-
-      81 |         });
-      82 |
-    > 83 |         expect(result.current.activities).toContainEqual(expect.objectContaining({
-         |                                           ^
-      84 |             name: 'Yoga',
-      85 |             duration: 45,
-      86 |             calories: 150,
-
-      at Object.toContainEqual (hooks/__tests__/useWorkouts.test.ts:83:43)
+      at node_modules/react-test-renderer/cjs/react-test-renderer.development.js:11801:19
+      at runWithFiberInDEV (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:1574:13)
+      at warnIfUpdatesNotWrappedWithActDEV (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:11800:9)
+      at scheduleUpdateOnFiber (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:10326:9)
+      at dispatchSetStateInternal (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:4148:13)
+      at dispatchSetState (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:4107:7)
+      at setAccounts (hooks/usePasswords.ts:73:17)
       at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
       at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
 
-----------------------------------|---------|----------|---------|---------|-------------------
-File                              | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s 
-----------------------------------|---------|----------|---------|---------|-------------------
-All files                         |    2.62 |      0.4 |    2.29 |    2.69 |                   
- app                              |       0 |        0 |       0 |       0 |                   
-  _layout.tsx                     |       0 |        0 |       0 |       0 | 18-161            
-  bible.tsx                       |       0 |        0 |       0 |       0 | 18-475            
-  calories.tsx                    |       0 |        0 |       0 |       0 | 12-270            
-  diary.tsx                       |       0 |        0 |       0 |       0 | 20-325            
-  friends.tsx                     |       0 |        0 |       0 |       0 | 28-317            
-  index.tsx                       |       0 |        0 |       0 |       0 | 16-162            
-  languages.tsx                   |       0 |        0 |       0 |       0 | 11-248            
-  messages.tsx                    |       0 |        0 |       0 |       0 | 28-499            
-  my_profile.tsx                  |       0 |        0 |       0 |       0 | 16-359            
-  notes.tsx                       |       0 |        0 |       0 |       0 | 12-361            
-  passwords.tsx                   |       0 |        0 |       0 |       0 | 12-331            
-  settings.tsx                    |       0 |        0 |       0 |       0 | 14-253            
-  socius-friends.tsx              |       0 |        0 |       0 |       0 | 34-319            
-  workout.tsx                     |       0 |        0 |       0 |       0 | 24-480            
- app/chat                         |       0 |        0 |       0 |       0 |                   
-  [id].tsx                        |       0 |        0 |       0 |       0 | 8-64              
-  index.tsx                       |       0 |        0 |       0 |       0 | 6-13              
- app/onboarding                   |       0 |        0 |       0 |       0 |                   
-  index.tsx                       |       0 |        0 |       0 |       0 | 12-141            
- app/socius-setup                 |       0 |        0 |       0 |       0 |                   
-  index.tsx                       |       0 |        0 |       0 |       0 | 26-468            
- components/features/bible        |       0 |        0 |       0 |       0 |                   
-  BibleBookmarksModal.tsx         |       0 |        0 |       0 |       0 | 33-84             
-  BibleSettingsModal.tsx          |       0 |        0 |       0 |       0 | 29-129            
- components/features/chat         |       0 |        0 |       0 |       0 |                   
-  AppSpecificChatHead.tsx         |       0 |        0 |       0 |       0 | 21-301            
-  ChatHead.tsx                    |       0 |        0 |       0 |       0 | 12-159            
-  ChatInterface.tsx               |       0 |        0 |       0 |       0 | 15-341            
-  MessageWidgets.tsx              |       0 |        0 |       0 |       0 | 8-64              
- components/features/chat/widgets |       0 |        0 |       0 |       0 |                   
-  CalorieWidget.tsx               |       0 |        0 |       0 |       0 | 22-157            
-  PasswordWidget.tsx              |       0 |        0 |       0 |       0 | 25-248            
-  TypingIndicator.tsx             |       0 |        0 |       0 |       0 | 11-62             
-  WorkoutWidget.tsx               |       0 |        0 |       0 |       0 | 22-185            
- components/features/home         |       0 |        0 |       0 |       0 |                   
-  DraggableAppsGrid.tsx           |       0 |        0 |       0 |       0 | 15-257            
- components/features/notes        |       0 |        0 |       0 |       0 |                   
-  DraggableNoteGrid.tsx           |       0 |        0 |       0 |       0 | 14-276            
- components/ui                    |       0 |        0 |       0 |       0 |                   
-  Avatar.tsx                      |       0 |        0 |       0 |       0 | 16-71             
-  Badge.tsx                       |       0 |        0 |       0 |       0 | 24-119            
-  Button.tsx                      |       0 |        0 |       0 |       0 | 21-145            
-  Card.tsx                        |       0 |        0 |       0 |       0 | 24-79             
-  ErrorBoundary.tsx               |       0 |        0 |       0 |       0 | 23-100            
-  Input.tsx                       |       0 |        0 |       0 |       0 | 24-141            
-  haptic-tab.tsx                  |       0 |        0 |       0 |       0 | 6-14              
-  hello-wave.tsx                  |       0 |      100 |       0 |       0 | 4                 
-  index.tsx                       |       0 |        0 |       0 |       0 |                   
- hooks                            |   10.42 |     2.74 |   11.02 |   11.02 |                   
-  useBible.ts                     |       0 |        0 |       0 |       0 | 25-426            
-  useCalories.ts                  |       0 |        0 |       0 |       0 | 14-225            
-  useChat.ts                      |       0 |        0 |       0 |       0 | 29-331            
-  useDebounce.ts                  |       0 |      100 |       0 |       0 | 4-16              
-  usePasswords.ts                 |       0 |        0 |       0 |       0 | 15-241            
-  useWorkouts.ts                  |   80.43 |    57.14 |   78.94 |   83.33 | 37-61,131,154,216 
- utils                            |       0 |        0 |       0 |       0 |                   
-  date.ts                         |       0 |        0 |       0 |       0 | 1-17              
-  string.ts                       |       0 |        0 |       0 |       0 | 5-7               
-----------------------------------|---------|----------|---------|---------|-------------------
-Test Suites: 1 failed, 1 total
-Tests:       1 failed, 3 passed, 4 total
-Snapshots:   0 total
-Time:        2.102 s, estimated 5 s
-Ran all test suites matching /hooks\/__tests__\/useWorkouts.test.ts/i.
+    console.error
+      An update to HookContainer inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+       97 |             console.error('Failed to load passwords', error);
+       98 |         } finally {
+    >  99 |             setLoading(false);
+          |             ^
+      100 |         }
+      101 |     }, [syncPending, fetchRemote]);
+      102 |
+
+      at node_modules/react-test-renderer/cjs/react-test-renderer.development.js:11801:19
+      at runWithFiberInDEV (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:1574:13)
+      at warnIfUpdatesNotWrappedWithActDEV (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:11800:9)
+      at scheduleUpdateOnFiber (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:10326:9)
+      at dispatchSetStateInternal (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:4148:13)
+      at dispatchSetState (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:4107:7)
+      at setLoading (hooks/usePasswords.ts:99:13)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+PASS context/__tests__/UserProfileContext.test.tsx
+FAIL app/__tests__/diary.test.tsx
+  ● DiaryScreen › should render entries fetched from api
+
+    No safe area value available. Make sure you are rendering `<SafeAreaProvider>` at the top of your app.
+
+      18 |
+      19 | export default function DiaryScreen() {
+    > 20 |     const insets = useSafeAreaInsets();
+         |                                     ^
+      21 |     const { colors, isDark } = useTheme();
+      22 |     const { t, language } = useLanguage();
+      23 |     const [entries, setEntries] = useState<DiaryEntry[]>([]);
+
+      at useSafeAreaInsets (node_modules/react-native-safe-area-context/src/SafeAreaContext.tsx:152:11)
+      at DiaryScreen (app/diary.tsx:20:37)
+      at Object.react-stack-bottom-frame (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:13976:20)
+      at renderWithHooks (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:2866:22)
+      at updateFunctionComponent (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:6006:19)
+      at beginWork (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:7474:18)
+      at runWithFiberInDEV (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:1574:13)
+      at performUnitOfWork (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:10972:22)
+      at workLoopSync (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:10816:41)
+      at renderRootSync (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:10797:11)
+      at performWorkOnRoot (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:10384:39)
+      at performWorkOnRootViaSchedulerTask (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:2094:7)
+      at flushActQueue (node_modules/react/cjs/react.development.js:566:34)
+      at Object.<anonymous>.process.env.NODE_ENV.exports.act (node_modules/react/cjs/react.development.js:859:10)
+      at actImplementation (node_modules/@testing-library/react-native/src/act.ts:30:25)
+      at renderWithAct (node_modules/@testing-library/react-native/src/render-act.ts:13:11)
+      at renderInternal (node_modules/@testing-library/react-native/src/render.tsx:69:33)
+      at renderInternal (node_modules/@testing-library/react-native/src/render.tsx:44:10)
+      at Object.<anonymous> (app/__tests__/diary.test.tsx:49:49)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+      at node_modules/@babel/runtime/helpers/asyncToGenerator.js:22:7
+      at Object.<anonymous> (node_modules/@babel/runtime/helpers/asyncToGenerator.js:14:12)
+
+  ● DiaryScreen › should show filtered empty state
+
+    No safe area value available. Make sure you are rendering `<SafeAreaProvider>` at the top of your app.
+
+      18 |
+      19 | export default function DiaryScreen() {
+    > 20 |     const insets = useSafeAreaInsets();
+         |                                     ^
+      21 |     const { colors, isDark } = useTheme();
+      22 |     const { t, language } = useLanguage();
+      23 |     const [entries, setEntries] = useState<DiaryEntry[]>([]);
+
+      at useSafeAreaInsets (node_modules/react-native-safe-area-context/src/SafeAreaContext.tsx:152:11)
+      at DiaryScreen (app/diary.tsx:20:37)
+      at Object.react-stack-bottom-frame (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:13976:20)
+      at renderWithHooks (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:2866:22)
+      at updateFunctionComponent (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:6006:19)
+      at beginWork (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:7474:18)
+      at runWithFiberInDEV (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:1574:13)
+      at performUnitOfWork (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:10972:22)
+      at workLoopSync (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:10816:41)
+      at renderRootSync (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:10797:11)
+      at performWorkOnRoot (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:10384:39)
+      at performWorkOnRootViaSchedulerTask (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:2094:7)
+      at flushActQueue (node_modules/react/cjs/react.development.js:566:34)
+      at Object.<anonymous>.process.env.NODE_ENV.exports.act (node_modules/react/cjs/react.development.js:859:10)
+      at actImplementation (node_modules/@testing-library/react-native/src/act.ts:30:25)
+      at renderWithAct (node_modules/@testing-library/react-native/src/render-act.ts:13:11)
+      at renderInternal (node_modules/@testing-library/react-native/src/render.tsx:69:33)
+      at renderInternal (node_modules/@testing-library/react-native/src/render.tsx:44:10)
+      at Object.<anonymous> (app/__tests__/diary.test.tsx:58:38)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+      at node_modules/@babel/runtime/helpers/asyncToGenerator.js:22:7
+      at Object.<anonymous> (node_modules/@babel/runtime/helpers/asyncToGenerator.js:14:12)
+
+PASS context/__tests__/NotificationContext.test.tsx
+  ● Console
+
+    console.warn
+      No session token, cannot connect to notification stream
+
+      36 |     const token = await SecureStore.getItemAsync('session_token');
+      37 |     if (!token) {
+    > 38 |         console.warn('No session token, cannot connect to notification stream');
+         |                 ^
+      39 |         return () => { };
+      40 |     }
+      41 |
+
+      at warn (services/eventSource.ts:38:17)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+    console.warn
+      No session token, cannot connect to notification stream
+
+      36 |     const token = await SecureStore.getItemAsync('session_token');
+      37 |     if (!token) {
+    > 38 |         console.warn('No session token, cannot connect to notification stream');
+         |                 ^
+      39 |         return () => { };
+      40 |     }
+      41 |
+
+      at warn (services/eventSource.ts:38:17)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+    console.warn
+      No session token, cannot connect to notification stream
+
+      36 |     const token = await SecureStore.getItemAsync('session_token');
+      37 |     if (!token) {
+    > 38 |         console.warn('No session token, cannot connect to notification stream');
+         |                 ^
+      39 |         return () => { };
+      40 |     }
+      41 |
+
+      at warn (services/eventSource.ts:38:17)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+PASS components/features/notes/__tests__/DraggableNoteGrid.test.tsx
+  ● Console
+
+    console.error
+      An update to Icon inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+      at node_modules/react-test-renderer/cjs/react-test-renderer.development.js:11801:19
+      at runWithFiberInDEV (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:1574:13)
+      at warnIfUpdatesNotWrappedWithActDEV (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:11800:9)
+      at scheduleUpdateOnFiber (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:10326:9)
+      at Object.enqueueSetState (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:14179:14)
+      at Icon.Object.<anonymous>.process.env.NODE_ENV.Component.setState (node_modules/react/cjs/react.development.js:632:20)
+      at Icon.setState (node_modules/@expo/vector-icons/src/createIconSet.tsx:181:31)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+PASS components/features/chat/__tests__/ChatInterface.test.tsx
+  ● Console
+
+    console.error
+      An update to Icon inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+      at node_modules/react-test-renderer/cjs/react-test-renderer.development.js:11801:19
+      at runWithFiberInDEV (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:1574:13)
+      at warnIfUpdatesNotWrappedWithActDEV (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:11800:9)
+      at scheduleUpdateOnFiber (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:10326:9)
+      at Object.enqueueSetState (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:14179:14)
+      at Icon.Object.<anonymous>.process.env.NODE_ENV.Component.setState (node_modules/react/cjs/react.development.js:632:20)
+      at Icon.setState (node_modules/@expo/vector-icons/src/createIconSet.tsx:181:31)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+PASS hooks/__tests__/useChat.test.ts
+A worker process has failed to exit gracefully and has been force exited. This is likely caused by tests leaking due to improper teardown. Try running with --detectOpenHandles to find leaks. Active timers can also cause this, ensure that .unref() was called on them.
+----------------------------------|---------|----------|---------|---------|-------------------------------------------------------
+File                              | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s                                     
+----------------------------------|---------|----------|---------|---------|-------------------------------------------------------
+All files                         |   10.97 |     4.76 |    9.17 |    11.4 |                                                       
+ app                              |    0.17 |        0 |    0.31 |    0.18 |                                                       
+  _layout.tsx                     |       0 |        0 |       0 |       0 | 18-161                                                
+  bible.tsx                       |       0 |        0 |       0 |       0 | 18-475                                                
+  calories.tsx                    |       0 |        0 |       0 |       0 | 12-270                                                
+  diary.tsx                       |    1.83 |        0 |    4.16 |     2.1 | 21-278                                                
+  friends.tsx                     |       0 |        0 |       0 |       0 | 28-317                                                
+  index.tsx                       |       0 |        0 |       0 |       0 | 16-162                                                
+  languages.tsx                   |       0 |        0 |       0 |       0 | 11-248                                                
+  messages.tsx                    |       0 |        0 |       0 |       0 | 28-499                                                
+  my_profile.tsx                  |       0 |        0 |       0 |       0 | 16-359                                                
+  notes.tsx                       |       0 |        0 |       0 |       0 | 12-361                                                
+  passwords.tsx                   |       0 |        0 |       0 |       0 | 12-331                                                
+  settings.tsx                    |       0 |        0 |       0 |       0 | 14-253                                                
+  socius-friends.tsx              |       0 |        0 |       0 |       0 | 34-319                                                
+  workout.tsx                     |       0 |        0 |       0 |       0 | 24-480                                                
+ app/chat                         |       0 |        0 |       0 |       0 |                                                       
+  [id].tsx                        |       0 |        0 |       0 |       0 | 8-64                                                  
+  index.tsx                       |       0 |        0 |       0 |       0 | 6-13                                                  
+ app/onboarding                   |       0 |        0 |       0 |       0 |                                                       
+  index.tsx                       |       0 |        0 |       0 |       0 | 12-141                                                
+ app/socius-setup                 |       0 |        0 |       0 |       0 |                                                       
+  index.tsx                       |       0 |        0 |       0 |       0 | 26-468                                                
+ components/features/bible        |       0 |        0 |       0 |       0 |                                                       
+  BibleBookmarksModal.tsx         |       0 |        0 |       0 |       0 | 33-84                                                 
+  BibleSettingsModal.tsx          |       0 |        0 |       0 |       0 | 29-129                                                
+ components/features/chat         |   10.56 |    13.18 |   13.04 |   10.88 |                                                       
+  AppSpecificChatHead.tsx         |       0 |        0 |       0 |       0 | 21-301                                                
+  ChatHead.tsx                    |       0 |        0 |       0 |       0 | 12-159                                                
+  ChatInterface.tsx               |   33.33 |    27.35 |    37.5 |   34.21 | 16-17,75,80,97-136,193-216,256,272-333                
+  MessageWidgets.tsx              |    4.54 |        0 |       0 |    4.76 | 9-64                                                  
+ components/features/chat/widgets |    5.64 |        0 |       0 |    6.25 |                                                       
+  CalorieWidget.tsx               |    3.84 |        0 |       0 |    4.34 | 25-143                                                
+  PasswordWidget.tsx              |    7.84 |        0 |       0 |    8.33 | 38-208                                                
+  TypingIndicator.tsx             |    7.14 |        0 |       0 |    8.33 | 11-50                                                 
+  WorkoutWidget.tsx               |       5 |        0 |       0 |    5.55 | 28-171                                                
+ components/features/home         |       0 |        0 |       0 |       0 |                                                       
+  DraggableAppsGrid.tsx           |       0 |        0 |       0 |       0 | 15-257                                                
+ components/features/notes        |   40.59 |     4.34 |   33.33 |   43.15 |                                                       
+  DraggableNoteGrid.tsx           |   40.59 |     4.34 |   33.33 |   43.15 | 69-74,83-143,147,207-210,216-218,223,258              
+ components/ui                    |       0 |        0 |       0 |       0 |                                                       
+  Avatar.tsx                      |       0 |        0 |       0 |       0 | 16-71                                                 
+  Badge.tsx                       |       0 |        0 |       0 |       0 | 24-119                                                
+  Button.tsx                      |       0 |        0 |       0 |       0 | 21-145                                                
+  Card.tsx                        |       0 |        0 |       0 |       0 | 24-79                                                 
+  ErrorBoundary.tsx               |       0 |        0 |       0 |       0 | 23-100                                                
+  Input.tsx                       |       0 |        0 |       0 |       0 | 24-141                                                
+  haptic-tab.tsx                  |       0 |        0 |       0 |       0 | 6-14                                                  
+  hello-wave.tsx                  |       0 |      100 |       0 |       0 | 4                                                     
+  index.tsx                       |       0 |        0 |       0 |       0 |                                                       
+ hooks                            |   30.23 |    18.21 |   32.84 |   32.07 |                                                       
+  useBible.ts                     |       0 |        0 |       0 |       0 | 25-426                                                
+  useCalories.ts                  |    0.98 |        0 |       0 |    1.08 | 17-225                                                
+  useChat.ts                      |   33.89 |    27.34 |   34.48 |   37.17 | 62,91-113,120,135-217,222-272,284-285,293-296,310-313 
+  useDebounce.ts                  |     100 |      100 |     100 |     100 |                                                       
+  usePasswords.ts                 |   73.46 |    45.45 |   68.18 |   75.28 | 77,97,108-155,174,195,222-223,237                     
+  useWorkouts.ts                  |   80.64 |    57.14 |      80 |   83.52 | 37-61,133,156,218                                     
+ utils                            |     100 |      100 |     100 |     100 |                                                       
+  date.ts                         |     100 |      100 |     100 |     100 |                                                       
+  string.ts                       |     100 |      100 |     100 |     100 |                                                       
+----------------------------------|---------|----------|---------|---------|-------------------------------------------------------
+
+Test Suites: 1 failed, 10 passed, 11 total
+Tests:       2 failed, 41 passed, 43 total
+Snapshots:   1 passed, 1 total
+Time:        4.929 s
+Ran all test suites.

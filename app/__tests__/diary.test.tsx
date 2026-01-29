@@ -5,6 +5,7 @@ import api from '../../services/api';
 import { AuthContext } from '../../context/AuthContext';
 import { ThemeProvider } from '../../context/ThemeContext';
 import { LanguageProvider } from '../../context/LanguageContext';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 // Mocks
 jest.mock('../../services/api');
@@ -15,19 +16,24 @@ jest.mock('expo-router', () => ({
 
 // Helper to wrap component with contexts
 const wrapper = ({ children }: { children: React.ReactNode }) => (
-    <AuthContext.Provider value={{
-        session: 'token',
-        isLoading: false,
-        user: null,
-        signIn: jest.fn(),
-        signOut: jest.fn()
+    <SafeAreaProvider initialMetrics={{
+        frame: { x: 0, y: 0, width: 0, height: 0 },
+        insets: { top: 0, left: 0, right: 0, bottom: 0 },
     }}>
-        <ThemeProvider>
-            <LanguageProvider>
-                {children}
-            </LanguageProvider>
-        </ThemeProvider>
-    </AuthContext.Provider>
+        <AuthContext.Provider value={{
+            session: 'token',
+            isLoading: false,
+            user: null,
+            signIn: jest.fn(),
+            signOut: jest.fn()
+        }}>
+            <ThemeProvider>
+                <LanguageProvider>
+                    {children}
+                </LanguageProvider>
+            </ThemeProvider>
+        </AuthContext.Provider>
+    </SafeAreaProvider>
 );
 
 describe('DiaryScreen', () => {

@@ -1,4 +1,4 @@
-import { renderHook, act } from '@testing-library/react-native';
+import { renderHook, act, waitFor } from '@testing-library/react-native';
 import { usePasswords } from '../usePasswords';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '@/services/api';
@@ -46,7 +46,6 @@ describe('usePasswords hook', () => {
 
         const { result } = renderHook(() => usePasswords());
 
-        const { waitFor } = require('@testing-library/react-native');
         await waitFor(() => expect(result.current.loading).toBe(false), { timeout: 2000 });
 
         expect(result.current.accounts).toEqual(mockAccounts);
@@ -59,7 +58,6 @@ describe('usePasswords hook', () => {
 
         const { result } = renderHook(() => usePasswords());
 
-        const { waitFor } = require('@testing-library/react-native');
         await waitFor(() => expect(result.current.loading).toBe(false), { timeout: 2000 });
 
         expect(api.post).toHaveBeenCalledWith('/passwords', expect.objectContaining({
@@ -72,7 +70,6 @@ describe('usePasswords hook', () => {
         (AsyncStorage.getItem as jest.Mock).mockResolvedValue(JSON.stringify([]));
 
         const { result } = renderHook(() => usePasswords());
-        const { waitFor } = require('@testing-library/react-native');
         await waitFor(() => expect(result.current.loading).toBe(false));
 
         const newAccountData = {
@@ -97,7 +94,6 @@ describe('usePasswords hook', () => {
         (AsyncStorage.getItem as jest.Mock).mockResolvedValue(JSON.stringify(mockAccounts));
 
         const { result } = renderHook(() => usePasswords());
-        const { waitFor } = require('@testing-library/react-native');
         await waitFor(() => expect(result.current.loading).toBe(false));
 
         await act(async () => {
