@@ -218,7 +218,7 @@ export default function DiaryScreen() {
     };
 
     return (
-        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['bottom', 'left', 'right']}>
             <Stack.Screen options={{
                 title: t('diary.title'),
                 headerRight: () => (

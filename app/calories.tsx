@@ -132,7 +132,7 @@ export default function CaloriesScreen() {
 
     if (loading) {
         return (
-            <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+            <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['bottom', 'left', 'right']}>
                 <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 50 }} />
             </SafeAreaView>
         );
@@ -140,7 +140,7 @@ export default function CaloriesScreen() {
 
 
     return (
-        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['bottom', 'left', 'right']}>
             <Stack.Screen
                 options={{
                     headerShown: true,

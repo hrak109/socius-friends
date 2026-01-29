@@ -12,6 +12,7 @@ import { NotificationProvider, useNotifications } from '@/context/NotificationCo
 import { UserProfileProvider, useUserProfile } from '@/context/UserProfileContext';
 import ErrorBoundary from '@/components/ui/ErrorBoundary';
 import { PROFILE_AVATAR_MAP } from '@/constants/avatars';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 
 
@@ -160,19 +161,21 @@ function RootLayoutNav() {
 export default function RootLayout() {
     return (
         <GestureHandlerRootView style={{ flex: 1 }}>
-            <ErrorBoundary>
-                <ThemeProvider>
-                    <AuthProvider>
-                        <LanguageProvider>
-                            <NotificationProvider>
-                                <UserProfileProvider>
-                                    <RootLayoutNav />
-                                </UserProfileProvider>
-                            </NotificationProvider>
-                        </LanguageProvider>
-                    </AuthProvider>
-                </ThemeProvider>
-            </ErrorBoundary>
+            <SafeAreaProvider>
+                <ErrorBoundary>
+                    <ThemeProvider>
+                        <AuthProvider>
+                            <LanguageProvider>
+                                <NotificationProvider>
+                                    <UserProfileProvider>
+                                        <RootLayoutNav />
+                                    </UserProfileProvider>
+                                </NotificationProvider>
+                            </LanguageProvider>
+                        </AuthProvider>
+                    </ThemeProvider>
+                </ErrorBoundary>
+            </SafeAreaProvider>
         </GestureHandlerRootView>
     );
 }

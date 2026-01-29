@@ -244,6 +244,8 @@ export const translations = {
             active: 'Active',
             min: 'min',
             day: 'day',
+            physical_profile: 'Physical Profile',
+            edit_stats: 'Edit Stats',
         },
         passwords: {
             title: 'Passwords',
@@ -627,6 +629,8 @@ export const translations = {
             active: '활동',
             min: '분',
             day: '일',
+            physical_profile: '신체 프로필',
+            edit_stats: '신체 정보 수정',
         },
         passwords: {
             title: '비밀번호',
