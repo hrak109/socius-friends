@@ -49,8 +49,8 @@ export default function CalorieWidget({ food, options, messageId, onLogged }: Ca
                     setLogged(true);
                     LOGGED_CACHE.set(String(messageId), true);
                 }
-            } catch {
-                // Ignore
+            } catch (e) {
+                console.error('Failed to load calorie widget status', e);
             }
         };
         checkStatus();

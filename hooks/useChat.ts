@@ -140,8 +140,8 @@ export function useChat({
 
                 if (cached.length > 0 && isActive) {
                     const restored = cached.map((m) => {
-                        if (typeof m._id === 'number') processedMessageIds.current.add(m._id);
-                        return { ...m, createdAt: new Date(m.createdAt) } as IMessage;
+                        if (m._id) processedMessageIds.current.add(Number(m._id)); // Add to processed set as number for future checks if API returns numbers
+                        return { ...m, _id: String(m._id), createdAt: new Date(m.createdAt) } as IMessage;
                     });
                     setMessages(restored);
                 }
@@ -162,7 +162,7 @@ export function useChat({
                         if (msg.id) processedMessageIds.current.add(msg.id);
                         const isFromMe = friendId ? msg.is_me : (msg.message_author === 'user' || msg.role === 'user');
                         return {
-                            _id: msg.id || Math.random(),
+                            _id: msg.id ? String(msg.id) : String(Math.random()),
                             text: String(msg.content || ''),
                             createdAt: fixTimestamp(msg.created_at),
                             user: isFromMe ? currentUser : botUser,
@@ -200,7 +200,7 @@ export function useChat({
 
                         // Cache update
                         const toCache: CachedMessage[] = reversed.map(m => ({
-                            _id: m._id,
+                            _id: String(m._id),
                             text: m.text,
                             createdAt: (m.createdAt instanceof Date ? m.createdAt : new Date(m.createdAt)).toISOString(),
                             user: { _id: m.user._id, name: m.user.name, avatar: typeof m.user.avatar === 'string' ? m.user.avatar : undefined }
@@ -294,7 +294,7 @@ export function useChat({
                 setIsWaitingForResponse(false);
                 setTyping(threadId, false);
                 setMessages(prev => GiftedChat.append(prev, [{
-                    _id: Math.random(),
+                    _id: String(Math.random()),
                     text: t('chat.error_not_sent'),
                     createdAt: new Date(),
                     user: botUser
@@ -311,7 +311,7 @@ export function useChat({
                 setIsTyping(false);
                 setTyping(threadId, false);
                 setMessages(prev => GiftedChat.append(prev, [{
-                    _id: Math.random(),
+                    _id: String(Math.random()),
                     text: 'Error sending message.',
                     createdAt: new Date(),
                     user: botUser

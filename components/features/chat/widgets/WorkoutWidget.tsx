@@ -51,8 +51,8 @@ export default function WorkoutWidget({ exercise, duration, options, messageId, 
                     setLogged(true);
                     LOGGED_CACHE.set(String(messageId), true);
                 }
-            } catch {
-                // Ignore
+            } catch (e) {
+                console.error('Failed to load workout widget status', e);
             }
         };
         checkStatus();

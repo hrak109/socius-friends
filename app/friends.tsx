@@ -132,8 +132,8 @@ export default function FriendsScreen() {
                     style: 'destructive',
                     onPress: async () => {
                         try {
-                            // Fetch messages to clear unread count (marks as read)
-                            await api.get(`/messages/${friendId}`);
+                            // Delete conversation history first to reset counts
+                            await api.delete(`/messages/user/${friendId}`).catch(() => { });
                             await api.delete(`/friends/${friendId}`);
                             fetchFriends();
                             refreshNotifications();
@@ -165,7 +165,7 @@ export default function FriendsScreen() {
                 <TouchableOpacity style={[styles.actionBtn, styles.chatBtn]} onPress={() => router.push({ pathname: '/chat/[id]', params: { id: `user-${item.friend_id}`, type: 'user', name: item.friend_username, avatar: item.friend_avatar || '' } } as any)}>
                     <Ionicons name="chatbubble-outline" size={20} color="#1a73e8" />
                 </TouchableOpacity>
-                <TouchableOpacity style={[styles.actionBtn, styles.deleteBtn]} onPress={() => unfriend(item.friend_id)}>
+                <TouchableOpacity testID="delete-friend-btn" style={[styles.actionBtn, styles.deleteBtn]} onPress={() => unfriend(item.friend_id)}>
                     <Ionicons name="trash-outline" size={20} color="#dc3545" />
                 </TouchableOpacity>
             </View>

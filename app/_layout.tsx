@@ -18,7 +18,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 const MessagesHeaderRight = () => {
     const { colors } = useTheme();
-    const { displayAvatar } = useUserProfile();
+    const { displayAvatar, googlePhotoUrl } = useUserProfile();
     const { user } = useSession();
     const router = useRouter();
 
@@ -27,11 +27,17 @@ const MessagesHeaderRight = () => {
     let avatarSource = null;
     if (displayAvatar && displayAvatar !== 'google' && PROFILE_AVATAR_MAP[displayAvatar]) {
         avatarSource = PROFILE_AVATAR_MAP[displayAvatar];
-    } else if (displayAvatar === 'google' && user?.photo) {
-        avatarSource = { uri: user.photo };
+    } else if (displayAvatar === 'google') {
+        // Prioritize googlePhotoUrl from UserProfileContext as it's freshly fetched, then AuthContext user.photo
+        const uri = googlePhotoUrl || user?.photo;
+        if (uri) {
+            avatarSource = { uri };
+        }
     } else if (user?.photo) {
         // Fallback or default
         avatarSource = { uri: user.photo };
+    } else if (googlePhotoUrl) {
+        avatarSource = { uri: googlePhotoUrl };
     }
 
     // Reset error when source changes

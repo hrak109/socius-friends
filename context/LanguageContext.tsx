@@ -25,8 +25,8 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
                 if (savedLanguage === 'en' || savedLanguage === 'ko') {
                     setLanguageState(savedLanguage);
                 }
-            } catch {
-
+            } catch (e) {
+                console.error('Failed to load language', e);
             }
         };
         loadLanguage();

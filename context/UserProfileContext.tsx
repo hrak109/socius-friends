@@ -8,6 +8,7 @@ type UserProfileContextType = {
     displayName: string | null;
     username: string | null;
     displayAvatar: string | null;
+    googlePhotoUrl: string | null;
     updateProfile: (name: string, avatarId: string, newUsername?: string) => Promise<void>;
     isLoading: boolean;
 };
@@ -16,6 +17,7 @@ const UserProfileContext = createContext<UserProfileContextType>({
     displayName: null,
     username: null,
     displayAvatar: null,
+    googlePhotoUrl: null,
     updateProfile: async () => { },
     isLoading: true,
 });
@@ -27,6 +29,7 @@ export const UserProfileProvider = ({ children }: { children: React.ReactNode })
     const [username, setUsername] = useState<string | null>(null);
     const [displayAvatar, setDisplayAvatar] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const [googlePhotoUrl, setGooglePhotoUrl] = useState<string | null>(null);
 
     const { session } = useSession();
 
@@ -38,6 +41,7 @@ export const UserProfileProvider = ({ children }: { children: React.ReactNode })
             setDisplayName(null);
             setUsername(null);
             setDisplayAvatar(null);
+            setGooglePhotoUrl(null);
         }
     }, [session]);
 
@@ -65,17 +69,24 @@ export const UserProfileProvider = ({ children }: { children: React.ReactNode })
 
                 // Determine display name with Google first name fallback
                 let resolvedName = data.display_name;
-                if (!resolvedName) {
-                    try {
-                        const googleUser = await GoogleSignin.getCurrentUser();
-                        const googleFullName = googleUser?.user?.name;
-                        if (googleFullName) {
-                            resolvedName = googleFullName.split(' ')[0]; // First name only
-                        }
-                    } catch {
-                        // Google sign-in not available, ignore
+
+                // Try to get Google info always to have the photo ready
+                try {
+                    const googleUser = await GoogleSignin.getCurrentUser();
+                    const googleFullName = googleUser?.user?.name;
+                    const googlePhoto = googleUser?.user?.photo;
+
+                    if (googlePhoto) {
+                        setGooglePhotoUrl(googlePhoto);
                     }
+
+                    if (!resolvedName && googleFullName) {
+                        resolvedName = googleFullName.split(' ')[0]; // First name only
+                    }
+                } catch {
+                    // Google sign-in not available, ignore
                 }
+
                 // Final fallback to username
                 if (!resolvedName) {
                     resolvedName = data.username;
@@ -142,9 +153,10 @@ export const UserProfileProvider = ({ children }: { children: React.ReactNode })
         displayName,
         username,
         displayAvatar,
+        googlePhotoUrl,
         updateProfile,
         isLoading
-    }), [displayName, username, displayAvatar, updateProfile, isLoading]);
+    }), [displayName, username, displayAvatar, googlePhotoUrl, updateProfile, isLoading]);
 
     return (
         <UserProfileContext.Provider value={value}>

@@ -318,7 +318,7 @@ export default function NotesScreen() {
                                 <Text style={[styles.modalCancel, { color: colors.text, marginLeft: 4 }]}>{t('common.back')}</Text>
                             </TouchableOpacity>
                             <Text style={[styles.modalTitleText, { color: colors.text, flex: 1, textAlign: 'center' }]}>
-                                {editingId ? (isAutosaving ? t('common.saving') : t('notes.edit_entry')) : t('notes.new_entry')}
+                                {editingId ? (isAutosaving ? t('common.saving') : t('common.saving_complete')) : t('notes.new_entry')}
                             </Text>
                             <View style={{ width: 60 }} />
                         </View>

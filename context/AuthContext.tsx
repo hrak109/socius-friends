@@ -13,6 +13,7 @@ interface AuthContextType {
 
 GoogleSignin.configure({
     webClientId: '801464542210-b08v4fc2tsk7ma3bfu30jc1frueps1on.apps.googleusercontent.com',
+    scopes: ['profile', 'email'],
 });
 
 export const AuthContext = createContext<AuthContextType>({
@@ -46,20 +47,18 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                     setSession(token);
                 }
 
-                // Try to get current google user if signed in
-                const currentUser = await GoogleSignin.getCurrentUser();
-                if (currentUser?.user) {
-                    setUser(currentUser.user);
-                } else if (token) {
-                    // If we have token but no user loaded yet, maybe try silent sign in?
-                    // For now, let's assume if token exists we might be valid.
-                    try {
-                        const silentUser = await GoogleSignin.signInSilently() as any;
-                        if (silentUser?.user) {
-                            setUser(silentUser.user);
-                        }
-                    } catch {
-                        // Silent sign in failed
+                // Try silent sign in to get fresh profile (specifically photo URL which expires)
+                try {
+                    const silentUser = await GoogleSignin.signInSilently() as any;
+                    if (silentUser?.user) {
+                        setUser(silentUser.user);
+                    }
+                } catch (error) {
+                    console.log('Silent sign in failed, falling back to cached user', error);
+                    // Fallback to get current google user if signed in but silent failure (e.g. network)
+                    const currentUser = await GoogleSignin.getCurrentUser();
+                    if (currentUser?.user) {
+                        setUser(currentUser.user);
                     }
                 }
 
@@ -86,8 +85,20 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setSession(null);
         setUser(null);
         await removeToken();
-        await AsyncStorage.clear(); // Wipe all app data on logout
+
+        // Only clear user-specific data, preserve app settings (theme, language)
+        const keysToRemove = [
+            'user_display_name',
+            'user_username',
+            'user_display_avatar',
+            'onboarding_complete',
+            'user_passwords', // Clear sensitive password widget data
+            'calorie_entries',
+            'workout_activities'
+            // Add other user-specific keys here as needed
+        ];
         try {
+            await AsyncStorage.multiRemove(keysToRemove);
             await GoogleSignin.signOut();
         } catch (error) {
             console.error(error);

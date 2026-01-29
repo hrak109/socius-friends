@@ -52,6 +52,43 @@ interface ChatThread {
     multilingual_selection?: string;
 }
 
+const PulseAvatar = ({ children, isTyping }: { children: React.ReactNode, isTyping: boolean }) => {
+    const opacity = React.useRef(new Animated.Value(1)).current;
+
+    useEffect(() => {
+        let animation: Animated.CompositeAnimation | null = null;
+        if (isTyping) {
+            animation = Animated.loop(
+                Animated.sequence([
+                    Animated.timing(opacity, {
+                        toValue: 0.4,
+                        duration: 800,
+                        useNativeDriver: true,
+                    }),
+                    Animated.timing(opacity, {
+                        toValue: 1,
+                        duration: 800,
+                        useNativeDriver: true,
+                    }),
+                ])
+            );
+            animation.start();
+        } else {
+            opacity.setValue(1);
+        }
+        return () => {
+            if (animation) animation.stop();
+        };
+    }, [isTyping, opacity]);
+
+    return (
+        <Animated.View style={{ opacity }}>
+            {children}
+        </Animated.View>
+    );
+};
+
+
 export default function MessagesScreen() {
     const router = useRouter();
     const { colors } = useTheme();
@@ -274,42 +311,7 @@ export default function MessagesScreen() {
         });
     };
 
-    // NEW: Pulse animation for typing
-    const PulseAvatar = ({ children, isTyping }: { children: React.ReactNode, isTyping: boolean }) => {
-        const opacity = React.useRef(new Animated.Value(1)).current;
 
-        useEffect(() => {
-            let animation: Animated.CompositeAnimation | null = null;
-            if (isTyping) {
-                animation = Animated.loop(
-                    Animated.sequence([
-                        Animated.timing(opacity, {
-                            toValue: 0.4,
-                            duration: 800,
-                            useNativeDriver: true,
-                        }),
-                        Animated.timing(opacity, {
-                            toValue: 1,
-                            duration: 800,
-                            useNativeDriver: true,
-                        }),
-                    ])
-                );
-                animation.start();
-            } else {
-                opacity.setValue(1);
-            }
-            return () => {
-                if (animation) animation.stop();
-            };
-        }, [isTyping, opacity]);
-
-        return (
-            <Animated.View style={{ opacity }}>
-                {children}
-            </Animated.View>
-        );
-    };
 
     const renderThread = ({ item }: { item: ChatThread }) => {
         let avatarSource = null;

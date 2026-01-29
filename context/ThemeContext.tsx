@@ -101,8 +101,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
                 if (savedAccent) {
                     setAccentColorState(savedAccent);
                 }
-            } catch {
-
+            } catch (e) {
+                console.error('Failed to load theme settings', e);
             }
         };
         loadSettings();

@@ -64,8 +64,8 @@ export default function PasswordWidget({
                     setSaved(true);
                     SAVED_CACHE.set(String(messageId), true);
                 }
-            } catch {
-                // Ignore
+            } catch (e) {
+                console.error('Failed to load password widget status', e);
             }
         };
         checkStatus();
