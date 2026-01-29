@@ -270,7 +270,7 @@ export default function DiaryScreen() {
                 }}
             >
                 <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, backgroundColor: colors.background }}>
-                    <SafeAreaView style={{ flex: 1 }}>
+                    <View style={{ flex: 1, paddingTop: insets.top }}>
                         <View style={styles.modalHeaderBar}>
                             <TouchableOpacity
                                 onPress={() => {
@@ -310,7 +310,7 @@ export default function DiaryScreen() {
                             {/* Add bottom padding for keyboard */}
                             <View style={{ height: 100 }} />
                         </ScrollView>
-                    </SafeAreaView>
+                    </View>
                     {(editContent.trim().length > 0 || editTitle.trim().length > 0) && (
                         <View style={{ padding: 10, alignItems: 'center' }}>
                             <Text style={{ color: colors.textSecondary, fontSize: 12 }}>{isAutosaving ? t('common.saving') : t('diary.autosave_enabled')}</Text>

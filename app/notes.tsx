@@ -305,7 +305,7 @@ export default function NotesScreen() {
                 }}
             >
                 <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, backgroundColor: colors.background }}>
-                    <SafeAreaView style={{ flex: 1 }}>
+                    <View style={{ flex: 1, paddingTop: insets.top }}>
                         <View style={styles.modalHeaderBar}>
                             <TouchableOpacity
                                 onPress={() => {
@@ -345,7 +345,7 @@ export default function NotesScreen() {
                             <View style={{ height: 100 }} />
                         </ScrollView>
 
-                    </SafeAreaView>
+                    </View>
                     {(editContent.length > 0 || editTitle.length > 0) && (
                         <View style={{ padding: 10, paddingBottom: 20, alignItems: 'center' }}>
                             <Text style={{ color: colors.textSecondary, fontSize: 12 }}>{isAutosaving ? t('common.saving') : t('notes.autosave_enabled')}</Text>

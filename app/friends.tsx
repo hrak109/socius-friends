@@ -132,6 +132,8 @@ export default function FriendsScreen() {
                     style: 'destructive',
                     onPress: async () => {
                         try {
+                            // Fetch messages to clear unread count (marks as read)
+                            await api.get(`/messages/${friendId}`);
                             await api.delete(`/friends/${friendId}`);
                             fetchFriends();
                             refreshNotifications();
