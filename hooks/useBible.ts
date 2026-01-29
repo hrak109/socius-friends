@@ -323,14 +323,79 @@ export function useBible() {
 
     // --- Search & Navigation ---
 
+    const parseQuery = useCallback((query: string) => {
+        const normalized = query.trim().toLowerCase();
+        // Remove numbers/spaces/colons from the end to get the "Book Name" part
+        const textPart = normalized.replace(/[\d: ]+$/, '').trim();
+        if (!textPart) return null;
+
+        const numbers = query.match(/(\d+)(?::(\d+))?$/);
+        const chapter = numbers ? parseInt(numbers[1]) : undefined;
+        const verse = numbers && numbers[2] ? parseInt(numbers[2]) : undefined;
+
+        let bestBookIndex = -1;
+
+        // References for search (English and Korean)
+        const refNIV = BIBLE_VERSIONS.find(v => v.id === 'NIV')?.data.books;
+        const refKRV = BIBLE_VERSIONS.find(v => v.id === 'KRV')?.data.books;
+        const currentBooks = currentBible?.books;
+
+        if (!currentBooks) return null;
+        const maxBooks = currentBooks.length;
+
+        // Iterate all books to find match
+        for (let i = 0; i < maxBooks; i++) {
+            const namesToCheck = [
+                currentBooks[i]?.name?.toLowerCase(),
+                refNIV?.[i]?.name?.toLowerCase(),
+                refKRV?.[i]?.name?.toLowerCase()
+            ].filter(Boolean) as string[];
+
+            const isExact = namesToCheck.includes(textPart);
+            const isStart = namesToCheck.some(name => name.startsWith(textPart));
+
+            if (isExact) {
+                bestBookIndex = i;
+                break; // Stop on exact match
+            }
+
+            if (isStart && bestBookIndex === -1) {
+                bestBookIndex = i;
+            }
+        }
+
+        if (bestBookIndex !== -1) {
+            return {
+                bookIndex: bestBookIndex,
+                bookName: currentBible.books[bestBookIndex].name,
+                chapter: chapter ? chapter - 1 : undefined,
+                verse: verse ? verse - 1 : undefined
+            };
+        }
+        return null;
+    }, [currentBible]);
+
     const suggestions = useMemo((): Suggestion[] => {
         if (!searchText.trim() || !currentBible?.books) return [];
-        const query = searchText.trim().toLowerCase();
+        const parsed = parseQuery(searchText);
         const results: Suggestion[] = [];
 
-        currentBible.books.forEach((book, bookIndex) => {
-            const bookName = book.name.toLowerCase();
-            if (bookName.startsWith(query) || bookName.includes(query)) {
+        // Helper for cross-lingual contains check
+        const refNIV = BIBLE_VERSIONS.find(v => v.id === 'NIV')?.data.books;
+        const refKRV = BIBLE_VERSIONS.find(v => v.id === 'KRV')?.data.books;
+
+        if (parsed) {
+            const { bookIndex, bookName, chapter } = parsed;
+            const book = currentBible.books[bookIndex];
+
+            if (chapter !== undefined) {
+                results.push({
+                    type: 'chapter', bookIndex, bookName: book.name, chapter: chapter,
+                    display: language === 'ko' ? `${book.name} ${chapter + 1}장` : `${book.name} ${chapter + 1}`
+                });
+            }
+
+            if (chapter === undefined) {
                 results.push({ type: 'book', bookIndex, bookName: book.name, display: book.name });
                 const chaptersToShow = Math.min(3, book.chapters?.length || 0);
                 for (let i = 0; i < chaptersToShow; i++) {
@@ -340,24 +405,61 @@ export function useBible() {
                     });
                 }
             }
-        });
+        } else {
+            // Fallback: Fuzzy search all books (Contains)
+            const query = searchText.trim().toLowerCase();
+            currentBible.books.forEach((book, bookIndex) => {
+                const namesToCheck = [
+                    book.name.toLowerCase(),
+                    refNIV?.[bookIndex]?.name?.toLowerCase(),
+                    refKRV?.[bookIndex]?.name?.toLowerCase()
+                ].filter(Boolean) as string[];
+
+                if (namesToCheck.some(name => name.includes(query))) {
+                    results.push({ type: 'book', bookIndex, bookName: book.name, display: book.name });
+                }
+            });
+        }
         return results.slice(0, 6);
-    }, [searchText, currentBible, language]);
+    }, [searchText, currentBible, language, parseQuery]);
 
     const handleSearch = (query: string) => {
         if (!query.trim() || !currentBible?.books) return;
-        const trimmed = query.trim();
 
-        // Logic similar to original (omitted full regex complexity for brevity, but can be copied if strict fidelity needed)
-        // Simplified fallback: find book
-        const bookIndex = currentBible.books.findIndex(b => b.name.toLowerCase().includes(trimmed.toLowerCase()));
-        if (bookIndex >= 0) {
-            setSelectedBookIndex(bookIndex);
-            setSelectedChapterIndex(0);
+        const parsed = parseQuery(query);
+
+        if (parsed) {
+            setSelectedBookIndex(parsed.bookIndex);
+            // Validate chapter
+            const book = currentBible.books[parsed.bookIndex];
+            let targetChapter = parsed.chapter || 0;
+            if (targetChapter >= (book.chapters?.length || 0)) {
+                targetChapter = 0; // fallback if out of range
+            }
+            setSelectedChapterIndex(targetChapter);
+
+            // If verse is parsed, we could potentially highlight it or scroll to it.
+            // For now, we just navigate to chapter. 
+            // If I wanted to support verse selection:
+            if (parsed.verse !== undefined) {
+                // Need to expose a mechanism to scroll to verse. 
+                // For now, just setting selectedVerse might trigger the 'menu', which is annoying.
+                // So we ignore verse selection for navigation, just go to chapter.
+            }
+
             setSearchText('');
             setIsSearchVisible(false);
         } else {
-            Alert.alert(t('common.error'), t('bible.search_not_found') || 'Book not found');
+            // Fallback: simple text match
+            const bookIndex = currentBible.books.findIndex(b => b.name.toLowerCase().includes(query.toLowerCase()));
+            if (bookIndex >= 0) {
+                setSelectedBookIndex(bookIndex);
+                setSelectedChapterIndex(0);
+                setSearchText('');
+                setIsSearchVisible(false);
+            } else {
+                Alert.alert(t('common.error'), t('bible.search_not_found') || 'Book not found');
+            }
         }
     };
 
