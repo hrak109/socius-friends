@@ -1,8 +1,10 @@
 import { useLocalSearchParams, Stack, useRouter } from 'expo-router';
-import { TouchableOpacity, View } from 'react-native';
+import { TouchableOpacity, View, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import React, { useState, useEffect } from 'react';
 import ChatInterface from '@/components/features/chat/ChatInterface';
 import { useLanguage } from '@/context/LanguageContext';
+import api from '@/services/api';
 
 export default function ChatScreen() {
     const router = useRouter();
@@ -15,7 +17,65 @@ export default function ChatScreen() {
         sociusRole?: string;
         initialText?: string;
     }>();
-    const { id, type, name, avatar, sociusRole, initialText } = params;
+    const { id, type, initialText } = params;
+
+    const [metadata, setMetadata] = useState<{
+        name: string;
+        avatar: string;
+        sociusRole?: string;
+        loading: boolean;
+    }>({
+        name: params.name || '',
+        avatar: params.avatar || '',
+        sociusRole: params.sociusRole || '',
+        loading: (!params.name || (type === 'socius' && !params.sociusRole))
+    });
+
+    useEffect(() => {
+        const fetchMetadata = async () => {
+            if (!metadata.loading) return;
+
+            try {
+                if (type === 'socius') {
+                    const numericId = id.replace('socius-', '');
+                    const res = await api.get('/friends/socius');
+                    const companion = (res.data || []).find((c: any) => String(c.id) === numericId);
+
+                    if (companion) {
+                        setMetadata({
+                            name: companion.name,
+                            avatar: companion.avatar,
+                            sociusRole: companion.role,
+                            loading: false
+                        });
+                    } else {
+                        setMetadata(prev => ({ ...prev, loading: false }));
+                    }
+                } else if (type === 'user') {
+                    const numericId = id.replace('user-', '');
+                    const res = await api.get('/friends');
+                    const friend = (res.data || []).find((f: any) => String(f.friend_id) === numericId);
+
+                    if (friend) {
+                        setMetadata({
+                            name: friend.friend_username,
+                            avatar: friend.friend_avatar || '',
+                            loading: false
+                        });
+                    } else {
+                        setMetadata(prev => ({ ...prev, loading: false }));
+                    }
+                }
+            } catch (error) {
+                console.error('Failed to fetch chat metadata:', error);
+                setMetadata(prev => ({ ...prev, loading: false }));
+            }
+        };
+
+        fetchMetadata();
+    }, [id, type, metadata.loading]);
+
+    const { name, avatar, sociusRole } = metadata;
 
     // Determine topic based on type
     const isSocius = type === 'socius';
@@ -60,7 +120,7 @@ export default function ChatScreen() {
         <>
             <Stack.Screen
                 options={{
-                    title: name || 'Chat',
+                    title: name || (metadata.loading ? '' : 'Chat'),
                     headerRight: (linkedApp && appTheme) ? () => (
                         <TouchableOpacity
                             onPress={() => router.push(linkedApp.path as any)}

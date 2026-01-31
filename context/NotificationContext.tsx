@@ -21,7 +21,7 @@ interface NotificationContextType {
     setTyping: (id: string, isTyping: boolean) => void;
 }
 
-const NotificationContext = createContext<NotificationContextType>({
+export const NotificationContext = createContext<NotificationContextType>({
     unreadCount: 0,
     sociusUnreadCount: 0,
     unreadDirectMessages: 0,

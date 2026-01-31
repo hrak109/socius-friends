@@ -260,6 +260,7 @@ export default function DiaryScreen() {
                 animationType="slide"
                 presentationStyle="fullScreen"
                 visible={modalVisible}
+                statusBarTranslucent={true}
                 onRequestClose={() => {
                     if (Platform.OS === 'android' && isKeyboardVisible) {
                         Keyboard.dismiss();
@@ -269,7 +270,11 @@ export default function DiaryScreen() {
                     }
                 }}
             >
-                <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, backgroundColor: colors.background }}>
+                <KeyboardAvoidingView
+                    behavior="padding"
+                    style={{ flex: 1, backgroundColor: colors.background }}
+                    keyboardVerticalOffset={Platform.OS === 'android' ? 64 : 0}
+                >
                     <View style={{ flex: 1, paddingTop: insets.top }}>
                         <View style={styles.modalHeaderBar}>
                             <TouchableOpacity

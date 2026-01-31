@@ -53,39 +53,10 @@ interface ChatThread {
 }
 
 const PulseAvatar = ({ children, isTyping }: { children: React.ReactNode, isTyping: boolean }) => {
-    const opacity = React.useRef(new Animated.Value(1)).current;
-
-    useEffect(() => {
-        let animation: Animated.CompositeAnimation | null = null;
-        if (isTyping) {
-            animation = Animated.loop(
-                Animated.sequence([
-                    Animated.timing(opacity, {
-                        toValue: 0.7,
-                        duration: 800,
-                        useNativeDriver: true,
-                    }),
-                    Animated.timing(opacity, {
-                        toValue: 1,
-                        duration: 800,
-                        useNativeDriver: true,
-                    }),
-                ])
-            );
-            animation.start();
-        } else {
-            opacity.setValue(1);
-        }
-        return () => {
-            if (animation) animation.stop();
-            opacity.setValue(1);
-        };
-    }, [isTyping, opacity]);
-
     return (
-        <Animated.View style={{ opacity }}>
+        <View>
             {children}
-        </Animated.View>
+        </View>
     );
 };
 
@@ -100,13 +71,6 @@ export default function MessagesScreen() {
     const [refreshing, setRefreshing] = useState(false);
     const [apps, setApps] = useState(DEFAULT_APPS);
     const [isTwoRow, setIsTwoRow] = useState(false);
-
-    // Load apps order on focus to support immediate update from settings
-    useFocusEffect(
-        useCallback(() => {
-            loadAppsOrder();
-        }, [])
-    );
 
     const loadAppsOrder = async () => {
         try {
@@ -131,6 +95,13 @@ export default function MessagesScreen() {
             console.error('Failed to load apps order', error);
         }
     };
+
+    // Load apps order on focus to support immediate update from settings
+    useFocusEffect(
+        useCallback(() => {
+            loadAppsOrder();
+        }, [])
+    );
 
     const handleDragEnd = async ({ data }: { data: typeof DEFAULT_APPS }) => {
         setApps(data);
