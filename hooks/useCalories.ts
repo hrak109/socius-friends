@@ -131,7 +131,7 @@ export function useCalories() {
         loadEntries();
     }, [loadEntries]);
 
-    const addEntry = useCallback(async (food: string | string[], calories: number) => {
+    const addEntry = useCallback(async (food: string | string[], calories: number, date?: string) => {
         // Guard against undefined/null food, and handle arrays
         let safeFoodName: string;
         if (Array.isArray(food)) {
@@ -143,7 +143,7 @@ export function useCalories() {
         }
 
         const now = new Date();
-        const dateStr = now.toISOString().split('T')[0];
+        const dateStr = date || now.toISOString().split('T')[0];
         const timestamp = now.getTime();
         const clientId = `${timestamp}-${Math.floor(Math.random() * 10000)}`;
 

@@ -358,11 +358,7 @@ export default function NotesScreen() {
                         </ScrollView>
 
                     </View>
-                    {(editContent.length > 0 || editTitle.length > 0) && (
-                        <View style={{ padding: 10, paddingBottom: 20, alignItems: 'center' }}>
-                            <Text style={{ color: colors.textSecondary, fontSize: 12 }}>{isAutosaving ? t('common.saving') : t('notes.autosave_enabled')}</Text>
-                        </View>
-                    )}
+
                 </KeyboardAvoidingView>
             </Modal>
 

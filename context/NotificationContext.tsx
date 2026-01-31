@@ -108,7 +108,12 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
             setSociusUnreadCount(socius);
             setUnreadDirectMessages(messages);
             setFriendRequests(friends);
-            await Notifications.setBadgeCountAsync(total);
+
+            // Fix: sum all notifications for the badge count to match what user sees
+            // total from API might be just unread_notifications, but we want the red badge to reflect everything
+            const badgeCount = socius + messages + friends;
+            // Use Math.max to ensure we don't set negative, and prefer our calculated sum
+            await Notifications.setBadgeCountAsync(Math.max(total, badgeCount));
         } catch (error: any) {
 
             if (error.response?.status === 401) {

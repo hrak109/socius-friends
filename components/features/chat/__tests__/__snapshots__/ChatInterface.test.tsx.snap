@@ -6,6 +6,7 @@ exports[`ChatInterface renders correctly 1`] = `
   style={
     [
       {
+        "backgroundColor": "#fff",
         "flex": 1,
       },
       {
@@ -83,6 +84,7 @@ exports[`ChatInterface renders correctly 1`] = `
       }
     >
       <TextInput
+        autoFocus={false}
         blurOnSubmit={false}
         editable={true}
         multiline={true}

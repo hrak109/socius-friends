@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { StyleSheet, View, Text, TouchableOpacity, FlatList, Modal, TextInput, Alert, ActivityIndicator, TouchableWithoutFeedback, KeyboardAvoidingView, Platform } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { Stack } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -21,6 +22,8 @@ export default function CaloriesScreen() {
     const [editingEntry, setEditingEntry] = useState<CalorieEntry | null>(null);
     const [food, setFood] = useState('');
     const [calories, setCalories] = useState('');
+    const [selectedDate, setSelectedDate] = useState(new Date());
+    const [showDatePicker, setShowDatePicker] = useState(false);
 
     const handleAddEntry = async () => {
         if (!food.trim() || !calories.trim()) {
@@ -35,13 +38,16 @@ export default function CaloriesScreen() {
 
         try {
             if (editingEntry) {
+                // Keep original date when editing unless we added date edit support later
                 await updateEntry(editingEntry.id, food.trim(), calNum);
             } else {
-                await addEntry(food.trim(), calNum);
+                const dateStr = selectedDate.toISOString().split('T')[0];
+                await addEntry(food.trim(), calNum, dateStr);
             }
             // Reset and close
             setFood('');
             setCalories('');
+            setSelectedDate(new Date());
             setEditingEntry(null);
             setModalVisible(false);
         } catch {
@@ -239,6 +245,31 @@ export default function CaloriesScreen() {
                             onChangeText={setFood}
                             autoFocus
                         />
+
+                        {!editingEntry && (
+                            <>
+                                <Text style={[styles.inputLabel, { color: colors.text }]}>{t('common.date') || 'Date'}</Text>
+                                <TouchableOpacity
+                                    style={[styles.input, { backgroundColor: colors.inputBackground, borderColor: colors.border, justifyContent: 'center' }]}
+                                    onPress={() => setShowDatePicker(true)}
+                                >
+                                    <Text style={{ color: colors.text, fontSize: 16 }}>
+                                        {selectedDate.toLocaleDateString()}
+                                    </Text>
+                                </TouchableOpacity>
+                                {showDatePicker && (
+                                    <DateTimePicker
+                                        value={selectedDate}
+                                        mode="date"
+                                        display="default"
+                                        onChange={(event, date) => {
+                                            setShowDatePicker(false);
+                                            if (date) setSelectedDate(date);
+                                        }}
+                                    />
+                                )}
+                            </>
+                        )}
 
                         <Text style={[styles.inputLabel, { color: colors.text }]}>{t('calories.calories')}</Text>
                         <TextInput

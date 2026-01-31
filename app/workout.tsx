@@ -11,6 +11,7 @@ import {
     KeyboardAvoidingView,
     Platform
 } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { Stack } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -49,6 +50,8 @@ export default function WorkoutScreen() {
     const [activityName, setActivityName] = useState('');
     const [durationInput, setDurationInput] = useState('');
     const [caloriesInput, setCaloriesInput] = useState('');
+    const [selectedDate, setSelectedDate] = useState(new Date());
+    const [showDatePicker, setShowDatePicker] = useState(false);
 
     // Initialize inputs when stats load
     useEffect(() => {
@@ -85,12 +88,14 @@ export default function WorkoutScreen() {
             return;
         }
 
-        await addActivity(activityName, parseInt(durationInput) || 0, parseInt(caloriesInput));
+        const dateStr = selectedDate.toISOString().split('T')[0];
+        await addActivity(activityName, parseInt(durationInput) || 0, parseInt(caloriesInput), dateStr);
 
         // Reset & Close
         setActivityName('');
         setDurationInput('');
         setCaloriesInput('');
+        setSelectedDate(new Date());
         setShowAddModal(false);
     };
 
@@ -431,6 +436,29 @@ export default function WorkoutScreen() {
                                         placeholder="Running, Gym, etc."
                                         placeholderTextColor={colors.textSecondary}
                                     />
+                                </View>
+
+                                <View style={{ marginBottom: 20 }}>
+                                    <Text style={[styles.inputLabel, { color: colors.text }]}>{t('common.date') || 'Date'}</Text>
+                                    <TouchableOpacity
+                                        style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, justifyContent: 'center' }]}
+                                        onPress={() => setShowDatePicker(true)}
+                                    >
+                                        <Text style={{ color: colors.text, fontSize: 16 }}>
+                                            {selectedDate.toLocaleDateString()}
+                                        </Text>
+                                    </TouchableOpacity>
+                                    {showDatePicker && (
+                                        <DateTimePicker
+                                            value={selectedDate}
+                                            mode="date"
+                                            display="default"
+                                            onChange={(event, date) => {
+                                                setShowDatePicker(false);
+                                                if (date) setSelectedDate(date);
+                                            }}
+                                        />
+                                    )}
                                 </View>
 
                                 <View style={[styles.inputRow, { marginBottom: 24 }]}>

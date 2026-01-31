@@ -160,10 +160,11 @@ export function useWorkouts() {
 
 
     // Redefining addActivity to match typical use case better
-    const addActivityItem = useCallback(async (name: string, duration: number, calories: number) => {
+    const addActivityItem = useCallback(async (name: string, duration: number, calories: number, date?: string) => {
         const timestamp = Date.now();
         const clientId = `${timestamp}-${Math.floor(Math.random() * 10000)}`;
-        const dateStr = new Date().toISOString().split('T')[0];
+        // Use provided date or today
+        const dateStr = date || new Date().toISOString().split('T')[0];
 
         const newActivity: Activity = {
             id: clientId,

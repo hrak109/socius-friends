@@ -283,7 +283,7 @@ export default function DiaryScreen() {
                                 <Text style={[styles.modalCancel, { color: colors.text, marginLeft: 4 }]}>{t('common.back')}</Text>
                             </TouchableOpacity>
                             <Text style={[styles.modalTitleText, { color: colors.text }]}>
-                                {editingId ? (isAutosaving ? t('common.saving') : t('diary.title')) : t('diary.new_entry')}
+                                {editingId ? (isAutosaving ? t('common.saving') : t('common.saving_complete')) : t('diary.new_entry')}
                             </Text>
                             {/* Hidden Spacer for alignment */}
                             <View style={{ width: 60 }} />
@@ -311,11 +311,7 @@ export default function DiaryScreen() {
                             <View style={{ height: 100 }} />
                         </ScrollView>
                     </View>
-                    {(editContent.trim().length > 0 || editTitle.trim().length > 0) && (
-                        <View style={{ padding: 10, alignItems: 'center' }}>
-                            <Text style={{ color: colors.textSecondary, fontSize: 12 }}>{isAutosaving ? t('common.saving') : t('diary.autosave_enabled')}</Text>
-                        </View>
-                    )}
+
                 </KeyboardAvoidingView>
             </Modal>
         </SafeAreaView>

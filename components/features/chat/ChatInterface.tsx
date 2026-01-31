@@ -219,7 +219,7 @@ export default function ChatInterface({ onClose, isModal = false, initialMessage
 
     return (
         <KeyboardAvoidingView
-            style={{ flex: 1 }}
+            style={{ flex: 1, backgroundColor: colors.background }}
             behavior={Platform.OS === 'ios' ? 'padding' : undefined}
             keyboardVerticalOffset={Platform.OS === 'ios' ? (showHeader ? 120 : 120) : 0}
         >
