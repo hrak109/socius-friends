@@ -1,5 +1,4 @@
-import React from 'react';
-import { render, waitFor, act } from '@testing-library/react-native';
+import { render, waitFor } from '@testing-library/react-native';
 import MessagesScreen from '../messages';
 import api from '../../services/api';
 import { AuthContext } from '../../context/AuthContext';
@@ -11,12 +10,16 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Mocks
 jest.mock('../../services/api');
-jest.mock('expo-router', () => ({
-    useFocusEffect: jest.fn((cb) => cb()),
-    useRouter: () => ({ push: jest.fn() }),
-    useSegments: () => ['messages'],
-    Stack: { Screen: () => null },
-}));
+jest.mock('expo-router', () => {
+    const MockStackScreen = () => null;
+    MockStackScreen.displayName = 'StackScreen';
+    return {
+        useFocusEffect: jest.fn((cb) => cb()),
+        useRouter: () => ({ push: jest.fn() }),
+        useSegments: () => ['messages'],
+        Stack: { Screen: MockStackScreen },
+    };
+});
 
 const mockNotificationValue = {
     unreadCount: 0,

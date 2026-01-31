@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, fireEvent, waitFor, act } from '@testing-library/react-native';
+import { render, fireEvent, act } from '@testing-library/react-native';
 import FriendsScreen from '../friends';
 import api from '../../services/api';
 import { AuthContext } from '../../context/AuthContext';

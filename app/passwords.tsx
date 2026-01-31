@@ -1,8 +1,8 @@
 import React, { useState, useMemo } from 'react';
-import { KeyboardAvoidingView, Platform, StyleSheet, View, Text, TouchableOpacity, SectionList, Modal, TextInput, Alert, ActivityIndicator, Keyboard, TouchableWithoutFeedback, ScrollView } from 'react-native';
+import { KeyboardAvoidingView, Platform, StyleSheet, View, Text, TouchableOpacity, SectionList, Modal, TextInput, Alert, ActivityIndicator, TouchableWithoutFeedback, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Stack } from 'expo-router';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Clipboard from 'expo-clipboard';
 import { useTheme } from '@/context/ThemeContext';
 import { useLanguage } from '@/context/LanguageContext';
@@ -11,7 +11,6 @@ import AppSpecificChatHead from '@/components/features/chat/AppSpecificChatHead'
 
 const GROUPS = ['social', 'work', 'personal', 'finance', 'other'];
 export default function PasswordsScreen() {
-    const insets = useSafeAreaInsets();
     const { accounts, loading, saveAccount, deleteAccount } = usePasswords();
 
     const { colors, isDark } = useTheme();

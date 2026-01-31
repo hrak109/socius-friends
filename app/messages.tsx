@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
     StyleSheet,
     View,
@@ -7,7 +7,6 @@ import {
     TouchableOpacity,
     Image,
     RefreshControl,
-    Animated
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';

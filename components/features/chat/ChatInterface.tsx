@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Image, KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View, Alert, Keyboard } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Bubble, GiftedChat } from 'react-native-gifted-chat';
 import * as Clipboard from 'expo-clipboard';
 import * as Haptics from 'expo-haptics';
@@ -41,7 +41,7 @@ export default function ChatInterface({ onClose, isModal = false, initialMessage
     const { colors } = useTheme();
     const { t, language } = useLanguage();
     const {
-        messages, text, setText, onSend, isTyping, isWaitingForResponse,
+        messages, text, setText, onSend, isTyping,
         isLoadingEarlier, canLoadMore, loadEarlierMessages, currentUser
     } = useChat({
         message_group_id, friendId, companionId, friendName, friendAvatar, initialMessage
@@ -49,7 +49,7 @@ export default function ChatInterface({ onClose, isModal = false, initialMessage
     const textInputRef = useRef<any>(null);
 
     // UI Layout State
-    const [isKeyboardVisible, setKeyboardVisible] = useState(false);
+    const [, setKeyboardVisible] = useState(false);
     const insets = useSafeAreaInsets();
 
     useEffect(() => {

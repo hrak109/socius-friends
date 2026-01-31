@@ -38,7 +38,6 @@ export default function ProfileScreen() {
     // Google Data
     const [googlePhoto, setGooglePhoto] = useState<string | null>(null);
     const [googleName, setGoogleName] = useState<string | null>(null);
-    const [email, setEmail] = useState('');
 
 
     useFocusEffect(
@@ -80,7 +79,6 @@ export default function ProfileScreen() {
             if (currentUser?.user) {
                 setGooglePhoto(currentUser.user.photo);
                 setGoogleName(currentUser.user.name);
-                setEmail(currentUser.user.email);
             }
         } catch (error) {
             console.error('Failed to load google profile', error);
@@ -120,7 +118,7 @@ export default function ProfileScreen() {
             });
             setIsEditingStats(false);
             Alert.alert(t('common.success'), t('workout.stats_updated') || 'Stats updated');
-        } catch (error) {
+        } catch {
             Alert.alert(t('common.error'), t('workout.stats_update_failed') || 'Failed to update stats');
         }
     };

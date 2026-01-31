@@ -3,7 +3,6 @@ import { render, fireEvent, act } from '@testing-library/react-native';
 import ChatInterface from '../ChatInterface';
 
 // Mock dependencies
-import { View } from 'react-native';
 import { useChat } from '@/hooks/useChat';
 
 // Mock dependencies

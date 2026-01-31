@@ -1,5 +1,5 @@
 import { useLocalSearchParams, Stack, useRouter } from 'expo-router';
-import { TouchableOpacity, View, ActivityIndicator } from 'react-native';
+import { TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import React, { useState, useEffect } from 'react';
 import ChatInterface from '@/components/features/chat/ChatInterface';

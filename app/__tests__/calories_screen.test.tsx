@@ -1,12 +1,15 @@
 import React from 'react';
-import { render, fireEvent, act } from '@testing-library/react-native';
+import { render, fireEvent } from '@testing-library/react-native';
+import { View } from 'react-native';
 import CaloriesScreen from '../calories';
 
 // Mock expo-router
 jest.mock('expo-router', () => {
-    const React = require('react');
-    const MockStack = ({ children }: any) => <>{children}</>;
-    MockStack.Screen = () => null;
+    const MockStack = ({ children }: any) => children;
+    MockStack.displayName = 'Stack';
+    const MockStackScreen = () => null;
+    MockStackScreen.displayName = 'StackScreen';
+    MockStack.Screen = MockStackScreen;
     return {
         Stack: MockStack,
         useRouter: () => ({ back: jest.fn(), push: jest.fn(), replace: jest.fn() }),
@@ -72,8 +75,9 @@ jest.mock('@/context/LanguageContext', () => ({
 }));
 
 jest.mock('@/components/features/chat/AppSpecificChatHead', () => {
-    const { View } = require('react-native');
-    return (props: any) => <View testID="chat-head" {...props} />;
+    const MockChatHead = (props: any) => React.createElement(View, { testID: 'chat-head', ...props });
+    MockChatHead.displayName = 'AppSpecificChatHead';
+    return MockChatHead;
 });
 
 describe('CaloriesScreen', () => {

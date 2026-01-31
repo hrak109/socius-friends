@@ -39,6 +39,12 @@ export function useChat({
     const [canLoadMore, setCanLoadMore] = useState(true);
 
     const responseTimeoutRef = useRef<any>(null);
+
+    useEffect(() => {
+        return () => {
+            if (responseTimeoutRef.current) clearTimeout(responseTimeoutRef.current);
+        };
+    }, []);
     const processedMessageIds = useRef<Set<number>>(new Set());
     const lastUserMessageTime = useRef<number>(0);
     const lastProcessedSseId = useRef<number | null>(null); // Track last processed SSE to avoid re-processing on remount

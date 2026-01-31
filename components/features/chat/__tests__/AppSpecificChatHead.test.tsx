@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, waitFor, act } from '@testing-library/react-native';
+import { render } from '@testing-library/react-native';
 import AppSpecificChatHead from '../AppSpecificChatHead';
 import api from '@/services/api';
 

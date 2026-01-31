@@ -1,4 +1,4 @@
-import { StyleSheet, View, Text, TouchableOpacity, TextInput, ActivityIndicator, Modal, KeyboardAvoidingView, Platform, Alert, Keyboard, ScrollView, Dimensions } from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity, TextInput, ActivityIndicator, Modal, KeyboardAvoidingView, Platform, Alert, Keyboard, Dimensions, ScrollView } from 'react-native';
 import { DraggableNoteGrid } from '../components/features/notes/DraggableNoteGrid';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Stack } from 'expo-router';
@@ -7,7 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import api from '@/services/api';
 import { useLanguage } from '@/context/LanguageContext';
 import { useDebounce } from '@/hooks/useDebounce';
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
 const { width } = Dimensions.get('window');
 const COLUMN_WIDTH = (width - 40) / 2; // 16px side margins + 8px gap
@@ -39,6 +39,8 @@ export default function NotesScreen() {
 
     // Ref to track if we are currently creating a note to prevent duplicates
     const isCreatingRef = useRef(false);
+    const titleInputRef = useRef<TextInput>(null);
+    const contentInputRef = useRef<TextInput>(null);
 
     const debouncedTitle = useDebounce(editTitle, 200);
     const debouncedContent = useDebounce(editContent, 200);
@@ -46,6 +48,7 @@ export default function NotesScreen() {
     // Modal states
     const [modalVisible, setModalVisible] = useState(false);
     const [isKeyboardVisible, setKeyboardVisible] = useState(false);
+    const [justOpened, setJustOpened] = useState(false); // Android: resets cursor to top once
 
     useEffect(() => {
         const showSubscription = Keyboard.addListener(Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow', () => setKeyboardVisible(true));
@@ -91,6 +94,9 @@ export default function NotesScreen() {
         setEditingId(entry.id);
         setEditContent(entry.content);
         setEditTitle(entry.title || '');
+        if (Platform.OS === 'android') {
+            setJustOpened(true);
+        }
     };
 
     const cancelEditing = () => {
@@ -340,27 +346,62 @@ export default function NotesScreen() {
                             <View style={{ width: 60 }} />
                         </View>
 
-                        <ScrollView style={styles.modalBody}>
-                            <TextInput
-                                style={[styles.modalInputTitle, { color: colors.text }]}
-                                placeholder={t('notes.title_placeholder')}
-                                placeholderTextColor={colors.textSecondary}
-                                value={editTitle}
-                                onChangeText={setEditTitle}
-                                multiline
-                            />
-                            <TextInput
-                                style={[styles.modalInputContent, { color: colors.text }]}
-                                placeholder={t('notes.content_placeholder')}
-                                placeholderTextColor={colors.textSecondary}
-                                value={editContent}
-                                onChangeText={setEditContent}
-                                multiline
-                                textAlignVertical="top"
-                                scrollEnabled={false}
-                            />
-                            <View style={{ height: 100 }} />
-                        </ScrollView>
+                        {Platform.OS === 'ios' ? (
+                            // iOS: Use ScrollView with nested TextInputs (original behavior)
+                            <ScrollView
+                                style={styles.modalBody}
+                                keyboardShouldPersistTaps="handled"
+                            >
+                                <TextInput
+                                    ref={titleInputRef}
+                                    style={[styles.modalInputTitle, { color: colors.text }]}
+                                    placeholder={t('notes.title_placeholder')}
+                                    placeholderTextColor={colors.textSecondary}
+                                    value={editTitle}
+                                    onChangeText={setEditTitle}
+                                    multiline
+                                />
+                                <TextInput
+                                    ref={contentInputRef}
+                                    style={[styles.modalInputContent, { color: colors.text }]}
+                                    placeholder={t('notes.content_placeholder')}
+                                    placeholderTextColor={colors.textSecondary}
+                                    value={editContent}
+                                    onChangeText={setEditContent}
+                                    multiline
+                                    textAlignVertical="top"
+                                    scrollEnabled={false}
+                                />
+                                <View style={{ height: 100 }} />
+                            </ScrollView>
+                        ) : (
+                            // Android: Use flex:1 TextInput with internal scrolling
+                            <View style={styles.modalBody}>
+                                <TextInput
+                                    ref={titleInputRef}
+                                    style={[styles.modalInputTitle, { color: colors.text }]}
+                                    placeholder={t('notes.title_placeholder')}
+                                    placeholderTextColor={colors.textSecondary}
+                                    value={editTitle}
+                                    onChangeText={setEditTitle}
+                                    multiline
+                                    selection={justOpened ? { start: 0, end: 0 } : undefined}
+                                    onSelectionChange={() => justOpened && setJustOpened(false)}
+                                />
+                                <TextInput
+                                    ref={contentInputRef}
+                                    style={[styles.modalInputContent, { color: colors.text, flex: 1 }]}
+                                    placeholder={t('notes.content_placeholder')}
+                                    placeholderTextColor={colors.textSecondary}
+                                    value={editContent}
+                                    onChangeText={setEditContent}
+                                    multiline
+                                    textAlignVertical="top"
+                                    selection={justOpened ? { start: 0, end: 0 } : undefined}
+                                    onSelectionChange={() => justOpened && setJustOpened(false)}
+                                />
+                            </View>
+                        )}
 
                     </View>
 

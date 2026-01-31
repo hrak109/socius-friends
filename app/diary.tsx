@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, FlatList, TextInput, ActivityIndicator, Modal, KeyboardAvoidingView, Platform, ScrollView, Alert, Keyboard } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { StyleSheet, View, Text, TouchableOpacity, FlatList, TextInput, ActivityIndicator, Modal, KeyboardAvoidingView, Platform, Alert, Keyboard, ScrollView } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Stack } from 'expo-router';
 import { useTheme } from '@/context/ThemeContext';
@@ -31,10 +31,13 @@ export default function DiaryScreen() {
 
     const debouncedTitle = useDebounce(editTitle, 500);
     const debouncedContent = useDebounce(editContent, 500);
+    const titleInputRef = useRef<TextInput>(null);
+    const contentInputRef = useRef<TextInput>(null);
 
     // Modal States
     const [modalVisible, setModalVisible] = useState(false);
     const [isKeyboardVisible, setKeyboardVisible] = useState(false);
+    const [justOpened, setJustOpened] = useState(false); // Android: resets cursor to top once
 
     useEffect(() => {
         const showSubscription = Keyboard.addListener(Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow', () => setKeyboardVisible(true));
@@ -171,6 +174,9 @@ export default function DiaryScreen() {
                                 setEditContent(item.content);
                                 setEditTitle(item.title || '');
                                 setModalVisible(true);
+                                if (Platform.OS === 'android') {
+                                    setJustOpened(true);
+                                }
                             }}
                             onLongPress={() => {
                                 Alert.alert(
@@ -294,27 +300,60 @@ export default function DiaryScreen() {
                             <View style={{ width: 60 }} />
                         </View>
 
-                        <ScrollView style={styles.modalBody}>
-                            <TextInput
-                                style={[styles.modalInputTitle, { color: colors.text, borderBottomColor: colors.border }]}
-                                placeholder={t('diary.title_placeholder')}
-                                placeholderTextColor={colors.textSecondary}
-                                value={editTitle}
-                                onChangeText={setEditTitle}
-                            />
-                            <TextInput
-                                style={[styles.modalInputContent, { color: colors.text }]}
-                                placeholder={t('diary.content_placeholder')}
-                                placeholderTextColor={colors.textSecondary}
-                                multiline
-                                textAlignVertical="top"
-                                value={editContent}
-                                onChangeText={setEditContent}
-                                scrollEnabled={false} // Let parent ScrollView handle it
-                            />
-                            {/* Add bottom padding for keyboard */}
-                            <View style={{ height: 100 }} />
-                        </ScrollView>
+                        {Platform.OS === 'ios' ? (
+                            // iOS: Use ScrollView with nested TextInputs (original behavior)
+                            <ScrollView
+                                style={styles.modalBody}
+                                keyboardShouldPersistTaps="handled"
+                            >
+                                <TextInput
+                                    ref={titleInputRef}
+                                    style={[styles.modalInputTitle, { color: colors.text, borderBottomColor: colors.border }]}
+                                    placeholder={t('diary.title_placeholder')}
+                                    placeholderTextColor={colors.textSecondary}
+                                    value={editTitle}
+                                    onChangeText={setEditTitle}
+                                />
+                                <TextInput
+                                    ref={contentInputRef}
+                                    style={[styles.modalInputContent, { color: colors.text }]}
+                                    placeholder={t('diary.content_placeholder')}
+                                    placeholderTextColor={colors.textSecondary}
+                                    multiline
+                                    textAlignVertical="top"
+                                    value={editContent}
+                                    onChangeText={setEditContent}
+                                    scrollEnabled={false}
+                                />
+                                <View style={{ height: 100 }} />
+                            </ScrollView>
+                        ) : (
+                            // Android: Use flex:1 TextInput with internal scrolling
+                            <View style={styles.modalBody}>
+                                <TextInput
+                                    ref={titleInputRef}
+                                    style={[styles.modalInputTitle, { color: colors.text, borderBottomColor: colors.border }]}
+                                    placeholder={t('diary.title_placeholder')}
+                                    placeholderTextColor={colors.textSecondary}
+                                    value={editTitle}
+                                    onChangeText={setEditTitle}
+                                    selection={justOpened ? { start: 0, end: 0 } : undefined}
+                                    onSelectionChange={() => justOpened && setJustOpened(false)}
+                                />
+                                <TextInput
+                                    ref={contentInputRef}
+                                    style={[styles.modalInputContent, { color: colors.text, flex: 1 }]}
+                                    placeholder={t('diary.content_placeholder')}
+                                    placeholderTextColor={colors.textSecondary}
+                                    multiline
+                                    textAlignVertical="top"
+                                    value={editContent}
+                                    onChangeText={setEditContent}
+                                    selection={justOpened ? { start: 0, end: 0 } : undefined}
+                                    onSelectionChange={() => justOpened && setJustOpened(false)}
+                                />
+                            </View>
+                        )}
                     </View>
 
                 </KeyboardAvoidingView>

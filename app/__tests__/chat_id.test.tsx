@@ -8,6 +8,7 @@ import { LanguageProvider } from '../../context/LanguageContext';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NotificationContext } from '../../context/NotificationContext';
 import { useLocalSearchParams } from 'expo-router';
+import { View } from 'react-native';
 
 // Mocks
 jest.mock('../../services/api');
@@ -20,11 +21,19 @@ jest.mock('expo-router', () => ({
 }));
 
 jest.mock('react-native-gifted-chat', () => {
-    const { View } = require('react-native');
+    const MockGiftedChat = (props: any) => <View testID="gifted-chat" />;
+    MockGiftedChat.displayName = 'GiftedChat';
+
+    const MockAvatar = (props: any) => <View testID="avatar" />;
+    MockAvatar.displayName = 'Avatar';
+
+    const MockBubble = (props: any) => <View testID="bubble" />;
+    MockBubble.displayName = 'Bubble';
+
     return {
-        GiftedChat: (props: any) => <View testID="gifted-chat" />,
-        Avatar: (props: any) => <View testID="avatar" />,
-        Bubble: (props: any) => <View testID="bubble" />,
+        GiftedChat: MockGiftedChat,
+        Avatar: MockAvatar,
+        Bubble: MockBubble,
     };
 });
 
