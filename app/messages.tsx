@@ -162,7 +162,7 @@ export default function MessagesScreen() {
                             }
                         ]}>
                             <Image
-                                source={require('../assets/images/socius-rainbow.png')}
+                                source={require('../assets/images/socius-rainbow.jpg')}
                                 style={{ width: 48, height: 48, position: 'absolute' }}
                             />
                             <Ionicons name={item.icon as any} size={24} color="#fff" />

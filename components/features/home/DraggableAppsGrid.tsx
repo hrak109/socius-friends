@@ -184,7 +184,7 @@ const SortableItem = ({
                 >
                     {id === 'socius' ? (
                         <View style={[styles.appIcon, { backgroundColor: 'transparent', shadowColor: app.color, overflow: 'hidden' }]}>
-                            <Image source={require('../../../assets/images/socius-rainbow.png')} style={{ width: 48, height: 48, position: 'absolute' }} />
+                            <Image source={require('../../../assets/images/socius-rainbow.jpg')} style={{ width: 48, height: 48, position: 'absolute' }} />
                             <Ionicons name={app.icon as any} size={24} color="#fff" />
                         </View>
                     ) : (
