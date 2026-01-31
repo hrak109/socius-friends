@@ -22,6 +22,8 @@ export const translations = {
             search: 'Search...',
             untitled: 'Untitled',
             saving_complete: 'Saved',
+            date: 'Date',
+            delete_failed: 'Failed to delete',
         },
         login: {
             subtitle: 'Chat with friends and AI companions',
@@ -252,6 +254,9 @@ export const translations = {
             day: 'day',
             physical_profile: 'Physical Profile',
             edit_stats: 'Edit Stats',
+            fill_all_fields: 'Please fill all fields',
+            stats_updated: 'Stats updated',
+            stats_update_failed: 'Failed to update stats',
         },
         passwords: {
             title: 'Passwords',
@@ -418,6 +423,8 @@ export const translations = {
             search: '검색...',
             untitled: '제목 없음',
             saving_complete: '저장됨',
+            date: '날짜',
+            delete_failed: '삭제 실패',
         },
         login: {
             subtitle: '친구 및 AI 동반자와 채팅하세요',
@@ -644,6 +651,9 @@ export const translations = {
             day: '일',
             physical_profile: '신체 프로필',
             edit_stats: '신체 정보 수정',
+            fill_all_fields: '모든 필드를 입력해주세요',
+            stats_updated: '신체 정보가 업데이트되었습니다',
+            stats_update_failed: '신체 정보 업데이트 실패',
         },
         passwords: {
             title: '비밀번호',

@@ -242,83 +242,82 @@ export default function PasswordsScreen() {
                 onRequestClose={closeModal}
             >
                 <KeyboardAvoidingView
-                    behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-                    style={{ flex: 1 }}
+                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                    style={styles.modalOverlay}
                     keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0}
                 >
-                    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-                        <View style={styles.modalOverlay}>
-                            <View style={[styles.modalContent, { backgroundColor: colors.card, paddingTop: Platform.OS === 'ios' ? insets.top : 24 }]}>
-                                <View style={styles.modalHeader}>
-                                    <Text style={[styles.modalTitle, { color: colors.text }]}>
-                                        {editingId ? t('passwords.edit_account') : t('passwords.add_account')}
-                                    </Text>
-                                    <TouchableOpacity onPress={closeModal}>
-                                        <Ionicons name="close" size={24} color={colors.textSecondary} />
-                                    </TouchableOpacity>
-                                </View>
-
-                                <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-                                    <Text style={[styles.label, { color: colors.textSecondary }]}>{t('passwords.service_placeholder')}</Text>
-                                    <TextInput
-                                        style={[styles.input, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#f5f5f5', color: colors.text, borderColor: colors.border }]}
-                                        value={service}
-                                        onChangeText={setService}
-                                        placeholder="Netflix"
-                                        placeholderTextColor={colors.textSecondary}
-                                    />
-
-                                    <Text style={[styles.label, { color: colors.textSecondary }]}>{t('passwords.username_placeholder')}</Text>
-                                    <TextInput
-                                        style={[styles.input, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#f5f5f5', color: colors.text, borderColor: colors.border }]}
-                                        value={username}
-                                        onChangeText={setUsername}
-                                        autoCapitalize="none"
-                                        placeholder="user@example.com"
-                                        placeholderTextColor={colors.textSecondary}
-                                    />
-
-                                    <Text style={[styles.label, { color: colors.textSecondary }]}>{t('passwords.password_placeholder')}</Text>
-                                    <TextInput
-                                        style={[styles.input, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#f5f5f5', color: colors.text, borderColor: colors.border }]}
-                                        value={password}
-                                        onChangeText={setPassword}
-                                        secureTextEntry={false}
-                                        placeholder="********"
-                                        placeholderTextColor={colors.textSecondary}
-                                    />
-
-                                    <Text style={[styles.label, { color: colors.textSecondary }]}>{t('passwords.group_label')}</Text>
-                                    <View style={styles.groupContainer}>
-                                        {GROUPS.map(g => (
-                                            <TouchableOpacity
-                                                key={g}
-                                                style={[
-                                                    styles.groupChip,
-                                                    { backgroundColor: group === g ? colors.primary : (isDark ? '#333' : '#f0f0f0') }
-                                                ]}
-                                                onPress={() => setGroup(g)}
-                                            >
-                                                <Text style={[
-                                                    styles.groupText,
-                                                    { color: group === g ? '#fff' : colors.text }
-                                                ]}>
-                                                    {t(`passwords.groups.${g}` as any) || g}
-                                                </Text>
-                                            </TouchableOpacity>
-                                        ))}
-                                    </View>
-
-                                    <TouchableOpacity
-                                        style={[styles.saveButton, { backgroundColor: colors.primary }]}
-                                        onPress={handleSave}
-                                    >
-                                        <Text style={styles.saveButtonText}>{t('common.save')}</Text>
-                                    </TouchableOpacity>
-                                </ScrollView>
-                            </View>
-                        </View>
+                    <TouchableWithoutFeedback onPress={closeModal}>
+                        <View style={styles.modalBackdrop} />
                     </TouchableWithoutFeedback>
+                    <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
+                        <View style={styles.modalHeader}>
+                            <Text style={[styles.modalTitle, { color: colors.text }]}>
+                                {editingId ? t('passwords.edit_account') : t('passwords.add_account')}
+                            </Text>
+                            <TouchableOpacity onPress={closeModal}>
+                                <Ionicons name="close" size={24} color={colors.textSecondary} />
+                            </TouchableOpacity>
+                        </View>
+
+                        <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+                            <Text style={[styles.label, { color: colors.textSecondary }]}>{t('passwords.service_placeholder')}</Text>
+                            <TextInput
+                                style={[styles.input, { backgroundColor: colors.inputBackground, color: colors.text, borderColor: colors.border }]}
+                                value={service}
+                                onChangeText={setService}
+                                placeholder="Netflix"
+                                placeholderTextColor={colors.textSecondary}
+                            />
+
+                            <Text style={[styles.label, { color: colors.textSecondary }]}>{t('passwords.username_placeholder')}</Text>
+                            <TextInput
+                                style={[styles.input, { backgroundColor: colors.inputBackground, color: colors.text, borderColor: colors.border }]}
+                                value={username}
+                                onChangeText={setUsername}
+                                autoCapitalize="none"
+                                placeholder="user@example.com"
+                                placeholderTextColor={colors.textSecondary}
+                            />
+
+                            <Text style={[styles.label, { color: colors.textSecondary }]}>{t('passwords.password_placeholder')}</Text>
+                            <TextInput
+                                style={[styles.input, { backgroundColor: colors.inputBackground, color: colors.text, borderColor: colors.border }]}
+                                value={password}
+                                onChangeText={setPassword}
+                                secureTextEntry={false}
+                                placeholder="********"
+                                placeholderTextColor={colors.textSecondary}
+                            />
+
+                            <Text style={[styles.label, { color: colors.textSecondary }]}>{t('passwords.group_label')}</Text>
+                            <View style={styles.groupContainer}>
+                                {GROUPS.map(g => (
+                                    <TouchableOpacity
+                                        key={g}
+                                        style={[
+                                            styles.groupChip,
+                                            { backgroundColor: group === g ? colors.primary : (isDark ? '#333' : '#f0f0f0') }
+                                        ]}
+                                        onPress={() => setGroup(g)}
+                                    >
+                                        <Text style={[
+                                            styles.groupText,
+                                            { color: group === g ? '#fff' : colors.text }
+                                        ]}>
+                                            {t(`passwords.groups.${g}` as any) || g}
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+
+                            <TouchableOpacity
+                                style={[styles.saveButton, { backgroundColor: colors.primary }]}
+                                onPress={handleSave}
+                            >
+                                <Text style={styles.saveButtonText}>{t('common.save')}</Text>
+                            </TouchableOpacity>
+                        </ScrollView>
+                    </View>
                 </KeyboardAvoidingView>
             </Modal>
 
@@ -436,13 +435,17 @@ const styles = StyleSheet.create({
     },
     modalOverlay: {
         flex: 1,
+        justifyContent: 'flex-end',
+    },
+    modalBackdrop: {
+        ...StyleSheet.absoluteFillObject,
         backgroundColor: 'rgba(0,0,0,0.5)',
-        justifyContent: 'center',
-        paddingHorizontal: 16,
     },
     modalContent: {
-        borderRadius: 24,
+        borderTopLeftRadius: 24,
+        borderTopRightRadius: 24,
         padding: 24,
+        paddingBottom: Platform.OS === 'ios' ? 40 : 24,
         maxHeight: '90%',
     },
     modalHeader: {
@@ -456,17 +459,17 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
     },
     label: {
-        fontSize: 13,
-        fontWeight: '500',
+        fontSize: 14,
+        fontWeight: '600',
         marginBottom: 8,
         marginTop: 12,
     },
     input: {
-        height: 50,
         borderRadius: 12,
-        paddingHorizontal: 16,
+        padding: 16,
         fontSize: 16,
         borderWidth: 1,
+        marginBottom: 20,
     },
     groupContainer: {
         flexDirection: 'row',
