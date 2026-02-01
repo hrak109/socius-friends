@@ -13,6 +13,13 @@ export type CalorieEntry = {
 
 const STORAGE_KEY = 'calories_entries';
 
+// Helper: sort entries by date desc, then timestamp desc
+const sortEntries = (entries: CalorieEntry[]): CalorieEntry[] =>
+    [...entries].sort((a, b) => {
+        if (a.date !== b.date) return b.date.localeCompare(a.date);
+        return b.timestamp - a.timestamp;
+    });
+
 export function useCalories() {
     const [entries, setEntries] = useState<CalorieEntry[]>([]);
     const [loading, setLoading] = useState(true);
@@ -56,8 +63,9 @@ export function useCalories() {
         }
 
         if (changed) {
-            await saveToStorage(updatedEntries);
-            setEntries(updatedEntries);
+            const sorted = sortEntries(updatedEntries);
+            await saveToStorage(sorted);
+            setEntries(sorted);
         }
         return updatedEntries;
     }, []);
@@ -87,14 +95,9 @@ export function useCalories() {
                 // Convert map values to array
                 const remoteEntries = Array.from(remoteMap.values());
 
-                // Filter out remote entries that might conflict with local unsynced
-                const finalEntries = [...remoteEntries, ...unsyncedLocal.filter(e => !remoteMap.has(e.id))];
-
                 // Sort by date/timestamp desc
-                finalEntries.sort((a, b) => {
-                    if (a.date !== b.date) return b.date.localeCompare(a.date);
-                    return b.timestamp - a.timestamp;
-                });
+                const finalEntries = sortEntries([...remoteEntries, ...unsyncedLocal.filter(e => !remoteMap.has(e.id))]);
+
 
                 setEntries(finalEntries);
                 await saveToStorage(finalEntries);
@@ -159,7 +162,7 @@ export function useCalories() {
 
         // Optimistic Save Local
         setEntries(prev => {
-            const updated = [newEntry, ...prev];
+            const updated = sortEntries([newEntry, ...prev]);
             saveToStorage(updated);
             return updated;
         });
@@ -218,7 +221,7 @@ export function useCalories() {
                 date: date || existingEntry.date,
                 synced: false
             };
-            const updatedList = prev.map(e => e.id === id ? updatedEntry : e);
+            const updatedList = sortEntries(prev.map(e => e.id === id ? updatedEntry : e));
             saveToStorage(updatedList);
             return updatedList;
         });

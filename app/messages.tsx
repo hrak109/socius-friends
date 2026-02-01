@@ -24,19 +24,8 @@ import { getCachedThreads, cacheThreads, CachedThread } from '@/services/ChatCac
 import { DraggableAppsGrid } from '@/components/features/home/DraggableAppsGrid';
 import { stripJsonBlocks } from '@/utils/string';
 
+import { DEFAULT_APPS, AppItem } from '@/constants/apps';
 const APPS_ORDER_KEY = 'user_apps_order_v1';
-
-const DEFAULT_APPS = [
-    { id: 'socius', label: 'friends.socius_friend', icon: 'sparkles', color: '#ffc320ff', route: '/socius-friends' },
-    { id: 'friends', label: 'friends.user_friend', icon: 'people', color: '#007AFF', route: '/friends' },
-    { id: 'bible', label: 'bible.title', icon: 'book', color: '#8D6E63', route: '/bible' },
-    { id: 'calories', label: 'calories.title', icon: 'nutrition', color: '#34C759', route: '/calories' },
-    { id: 'passwords', label: 'passwords.title', icon: 'key', color: '#5856D6', route: '/passwords' },
-    { id: 'notes', label: 'notes.title', icon: 'document-text', color: '#FF9500', route: '/notes' },
-    { id: 'diary', label: 'diary.title', icon: 'journal', color: '#FF2D55', route: '/diary' },
-    { id: 'workout', label: 'workout.title', icon: 'fitness', color: '#FF3B30', route: '/workout' },
-    { id: 'languages', label: 'languages.title', icon: 'globe', color: '#BDB2FF', route: '/languages' },
-];
 
 interface ChatThread {
     id: string;
@@ -68,7 +57,7 @@ export default function MessagesScreen() {
     const { lastNotificationTime, typingThreads, setTyping, friendRequests, refreshNotifications } = useNotifications();
     const [threads, setThreads] = useState<ChatThread[]>([]);
     const [refreshing, setRefreshing] = useState(false);
-    const [apps, setApps] = useState(DEFAULT_APPS);
+    const [apps, setApps] = useState<AppItem[]>(DEFAULT_APPS.filter(a => a.id !== 'messages'));
     const [isTwoRow, setIsTwoRow] = useState(true);
 
     const loadAppsOrder = async () => {
@@ -88,10 +77,10 @@ export default function MessagesScreen() {
                 // Get objects for saved order, filtering out any that no longer exist in DEFAULT_APPS
                 const savedAppObjects = savedOrder
                     .map((id: string) => DEFAULT_APPS.find(a => a.id === id))
-                    .filter((app: typeof DEFAULT_APPS[0] | undefined): app is typeof DEFAULT_APPS[0] => app !== undefined);
+                    .filter((app: typeof DEFAULT_APPS[0] | undefined): app is typeof DEFAULT_APPS[0] => app !== undefined && app.id !== 'messages');
 
                 // Identify and append new apps not present in saved order
-                const newAppObjects = DEFAULT_APPS.filter(a => !savedOrder.includes(a.id));
+                const newAppObjects = DEFAULT_APPS.filter(a => !savedOrder.includes(a.id) && a.id !== 'messages');
 
                 setApps([...savedAppObjects, ...newAppObjects]);
             }

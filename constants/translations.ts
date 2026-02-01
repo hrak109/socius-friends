@@ -3,6 +3,7 @@ export const translations = {
         common: {
             back: 'Back',
             close: 'Close',
+            shortcuts: 'In-App Shortcuts',
             save: 'Save',
             cancel: 'Cancel',
             confirm: 'Confirm',
@@ -272,6 +273,7 @@ export const translations = {
             custom_calories: 'Enter Custom',
             history: 'Activity History',
             average: 'Daily Average',
+            total_average: 'Total Average',
             rest: 'Rest',
             active: 'Active',
             min: 'min',
@@ -433,6 +435,7 @@ export const translations = {
         common: {
             back: '뒤로',
             close: '닫기',
+            shortcuts: '바로가기',
             save: '저장',
             cancel: '취소',
             confirm: '확인',
@@ -700,6 +703,7 @@ export const translations = {
             custom_calories: '직접 입력',
             history: '활동 기록',
             average: '일일 평균',
+            total_average: '총 평균',
             rest: '휴식',
             active: '활동',
             min: '분',

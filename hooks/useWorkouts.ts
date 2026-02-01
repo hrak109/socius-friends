@@ -25,6 +25,13 @@ export interface Activity {
 const STATS_KEY = 'user_physical_stats';
 const ACTIVITIES_KEY = 'workout_activities';
 
+// Helper: sort activities by date desc, then timestamp desc
+const sortActivities = (acts: Activity[]): Activity[] =>
+    [...acts].sort((a, b) => {
+        if (a.date !== b.date) return b.date.localeCompare(a.date);
+        return b.timestamp - a.timestamp;
+    });
+
 export function useWorkouts() {
     const [stats, setStats] = useState<PhysicalStats | null>(null);
     const [activities, setActivities] = useState<Activity[]>([]);
@@ -55,8 +62,9 @@ export function useWorkouts() {
         }
 
         if (changed) {
-            await AsyncStorage.setItem(ACTIVITIES_KEY, JSON.stringify(updated));
-            setActivities(updated);
+            const sorted = sortActivities(updated);
+            await AsyncStorage.setItem(ACTIVITIES_KEY, JSON.stringify(sorted));
+            setActivities(sorted);
         }
         return updated;
     }, []);
@@ -98,8 +106,7 @@ export function useWorkouts() {
                 setActivities(prev => {
                     // Keep local unsynced acts that aren't in remote yet
                     const unsyncedLocal = prev.filter(a => !a.synced);
-                    const finalActs = [...remoteActs, ...unsyncedLocal.filter(a => !remoteMap.has(a.id))];
-                    finalActs.sort((a, b) => b.timestamp - a.timestamp);
+                    const finalActs = sortActivities([...remoteActs, ...unsyncedLocal.filter(a => !remoteMap.has(a.id))]);
                     AsyncStorage.setItem(ACTIVITIES_KEY, JSON.stringify(finalActs));
                     return finalActs;
                 });
@@ -182,7 +189,7 @@ export function useWorkouts() {
         };
 
         setActivities(prev => {
-            const updated = [newActivity, ...prev];
+            const updated = sortActivities([newActivity, ...prev]);
             AsyncStorage.setItem(ACTIVITIES_KEY, JSON.stringify(updated));
             return updated;
         });
@@ -226,7 +233,7 @@ export function useWorkouts() {
                 date: date || existingActivity.date,
                 synced: false
             };
-            const updatedList = prev.map(a => a.id === id ? updatedActivity : a);
+            const updatedList = sortActivities(prev.map(a => a.id === id ? updatedActivity : a));
             AsyncStorage.setItem(ACTIVITIES_KEY, JSON.stringify(updatedList));
             return updatedList;
         });

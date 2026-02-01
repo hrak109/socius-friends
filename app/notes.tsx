@@ -8,6 +8,7 @@ import api from '@/services/api';
 import { useLanguage } from '@/context/LanguageContext';
 import { useDebounce } from '@/hooks/useDebounce';
 import React, { useState, useEffect, useRef } from 'react';
+import GlobalAppShortcut from '../components/features/chat/GlobalAppShortcut';
 
 const { width } = Dimensions.get('window');
 const COLUMN_WIDTH = (width - 40) / 2; // 16px side margins + 8px gap
@@ -406,6 +407,7 @@ export default function NotesScreen() {
                     </View>
 
                 </KeyboardAvoidingView>
+                <GlobalAppShortcut />
             </Modal>
 
         </SafeAreaView >

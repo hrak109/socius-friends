@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { StyleSheet, View, Text, TouchableOpacity, FlatList, TextInput, ActivityIndicator, Modal, KeyboardAvoidingView, Platform, Alert, Keyboard, ScrollView } from 'react-native';
+import GlobalAppShortcut from '../components/features/chat/GlobalAppShortcut';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Stack } from 'expo-router';
 import { useTheme } from '@/context/ThemeContext';
@@ -357,6 +358,7 @@ export default function DiaryScreen() {
                     </View>
 
                 </KeyboardAvoidingView>
+                <GlobalAppShortcut />
             </Modal>
         </SafeAreaView>
     );

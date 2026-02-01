@@ -13,6 +13,7 @@ import { UserProfileProvider, useUserProfile } from '@/context/UserProfileContex
 import ErrorBoundary from '@/components/ui/ErrorBoundary';
 import { PROFILE_AVATAR_MAP } from '@/constants/avatars';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import GlobalAppShortcut from '@/components/features/chat/GlobalAppShortcut';
 
 
 
@@ -160,6 +161,7 @@ function RootLayoutNav() {
                 <Stack.Screen name="workout" options={{ title: t('workout.title') }} />
                 <Stack.Screen name="onboarding/index" options={{ headerShown: false }} />
             </Stack>
+            <GlobalAppShortcut />
         </>
     );
 }

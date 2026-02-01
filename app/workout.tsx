@@ -221,7 +221,19 @@ export default function WorkoutScreen() {
         return Math.round(total / dates.size);
     }, [activities]);
 
+    // Average total = BMR + average activity
+    const averageTotal = bmr + dailyAverage;
+
     const totalToday = bmr + todayActiveCalories;
+
+    // Group calories by date for history headers
+    const caloriesByDate = useMemo(() => {
+        const map: Record<string, number> = {};
+        activities.forEach(a => {
+            map[a.date] = (map[a.date] || 0) + a.calories;
+        });
+        return map;
+    }, [activities]);
 
     // --- Render ---
 
@@ -259,56 +271,44 @@ export default function WorkoutScreen() {
             />
 
             <ScrollView contentContainerStyle={styles.scrollContent}>
-                {/* Visual Header - Row 1: BMR & TDEE */}
-                <View style={styles.headerStatsRow}>
-                    {/* BMR Card - Opens stats editing modal */}
+                {/* Profile Card - Click to edit */}
+                {stats && (
                     <TouchableOpacity
-                        style={[styles.statCard, { backgroundColor: colors.card }]}
-                        onPress={() => {
-                            if (stats) {
-                                setShowStatsModal(true);
-                            }
-                        }}
+                        style={[styles.profileCard, { backgroundColor: colors.card }]}
+                        onPress={() => setShowStatsModal(true)}
                     >
-                        <Text style={[styles.statLabel, { color: colors.textSecondary }]}>{t('workout.bmr')}</Text>
-                        <Text style={[styles.statValue, { color: colors.text }]}>{bmr}</Text>
-                        <Text style={[styles.statUnit, { color: colors.textSecondary }]}>kcal/{t('workout.day')}</Text>
+                        <View style={styles.profileHeader}>
+                            <Ionicons name="person-circle-outline" size={32} color={colors.primary} />
+                            <Text style={[styles.profileTitle, { color: colors.text }]}>{t('workout.physical_profile')}</Text>
+                            <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+                        </View>
+                        <View style={styles.profileStats}>
+                            <View style={styles.profileStatItem}>
+                                <Text style={[styles.profileStatValue, { color: colors.text }]}>{stats.height}</Text>
+                                <Text style={[styles.profileStatLabel, { color: colors.textSecondary }]}>cm</Text>
+                            </View>
+                            <View style={styles.profileStatItem}>
+                                <Text style={[styles.profileStatValue, { color: colors.text }]}>{stats.weight}</Text>
+                                <Text style={[styles.profileStatLabel, { color: colors.textSecondary }]}>kg</Text>
+                            </View>
+                            <View style={styles.profileStatItem}>
+                                <Text style={[styles.profileStatValue, { color: colors.text }]}>{stats.age}</Text>
+                                <Text style={[styles.profileStatLabel, { color: colors.textSecondary }]}>{t('workout.age')}</Text>
+                            </View>
+                            <View style={styles.profileStatItem}>
+                                <Text style={[styles.profileStatValue, { color: colors.text }]}>{stats.gender === 'male' ? '♂' : '♀'}</Text>
+                                <Text style={[styles.profileStatLabel, { color: colors.textSecondary }]}>{t('workout.gender')}</Text>
+                            </View>
+                        </View>
                     </TouchableOpacity>
+                )}
 
-                    {/* TDEE Card - Opens calculations modal */}
-                    <TouchableOpacity
-                        style={[styles.statCard, { backgroundColor: colors.card }]}
-                        onPress={() => {
-                            if (stats) {
-                                setShowCalcsModal(true);
-                            }
-                        }}
-                    >
-                        <Text style={[styles.statLabel, { color: colors.textSecondary }]}>{t('workout.tdee')}</Text>
-                        <Text style={[styles.statValue, { color: '#34C759' }]}>{tdee}</Text>
-                        <Text style={[styles.statUnit, { color: colors.textSecondary }]}>kcal/{t('workout.day')}</Text>
-                    </TouchableOpacity>
-                </View>
-
-                {/* Visual Header - Row 2: Today Active & Daily Average */}
-                <View style={styles.headerStatsRow}>
-                    {/* Active Card */}
-                    <View style={[styles.statCard, { backgroundColor: colors.card }]}>
-                        <Text style={[styles.statLabel, { color: colors.textSecondary }]}>{t('workout.active_calories')}</Text>
-                        <Text style={[styles.statValue, { color: '#FF3B30' }]}>{todayActiveCalories}</Text>
-                        <Text style={[styles.statUnit, { color: colors.textSecondary }]}>{t('common.today') || 'Today'}</Text>
-                    </View>
-
-                    {/* Average Card */}
-                    <View style={[styles.statCard, { backgroundColor: colors.card }]}>
-                        <Text style={[styles.statLabel, { color: colors.textSecondary }]}>{t('workout.average')}</Text>
-                        <Text style={[styles.statValue, { color: colors.text }]}>{dailyAverage}</Text>
-                        <Text style={[styles.statUnit, { color: colors.textSecondary }]}>kcal/{t('workout.day')}</Text>
-                    </View>
-                </View>
-
-                {/* Total Visual */}
-                <View style={[styles.totalCard, { backgroundColor: colors.card }]}>
+                {/* Total Calories Widget - Clickable for TDEE details */}
+                <TouchableOpacity
+                    style={[styles.totalCard, { backgroundColor: colors.card }]}
+                    onPress={() => stats && setShowCalcsModal(true)}
+                    activeOpacity={stats ? 0.7 : 1}
+                >
                     <Text style={[styles.totalLabel, { color: colors.textSecondary }]}>{t('workout.total_calories')}</Text>
                     <View style={styles.totalRow}>
                         <Ionicons name="flame" size={32} color="#FF9500" />
@@ -322,10 +322,20 @@ export default function WorkoutScreen() {
                         <View style={{ flex: todayActiveCalories > 0 ? todayActiveCalories : 0.1, backgroundColor: '#FF3B30', height: 8, borderTopRightRadius: 4, borderBottomRightRadius: 4 }} />
                     </View>
                     <View style={styles.barLabels}>
-                        <Text style={{ fontSize: 10, color: '#34C759' }}>{t('workout.rest')} ({bmr})</Text>
+                        <Text style={{ fontSize: 10, color: '#34C759' }}>{t('workout.bmr')} ({bmr})</Text>
                         <Text style={{ fontSize: 10, color: '#FF3B30' }}>{t('workout.active')} ({todayActiveCalories})</Text>
                     </View>
-                </View>
+                    {stats && (
+                        <View style={{ marginTop: 8, alignItems: 'center' }}>
+                            <Text style={{ fontSize: 12, fontWeight: '500', color: colors.textSecondary }}>
+                                {t('workout.active')} {t('workout.average')}: {dailyAverage} kcal • {t('workout.total_average')}: {averageTotal} kcal
+                            </Text>
+                            <Text style={{ fontSize: 11, color: colors.textSecondary, marginTop: 4 }}>
+                                {t('workout.tdee')}: {tdee} kcal/{t('workout.day')}
+                            </Text>
+                        </View>
+                    )}
+                </TouchableOpacity>
 
                 {/* Activity History List */}
                 <View style={styles.listHeader}>
@@ -352,9 +362,20 @@ export default function WorkoutScreen() {
                         return (
                             <View key={item.id}>
                                 {showDateHeader && (
-                                    <View style={[styles.dateHeader, { backgroundColor: isToday ? colors.primary + '20' : colors.card }]}>
+                                    <View style={[
+                                        styles.dateHeader,
+                                        {
+                                            backgroundColor: isToday ? colors.primary + '20' : colors.card,
+                                            flexDirection: 'row',
+                                            justifyContent: 'space-between',
+                                            alignItems: 'center'
+                                        }
+                                    ]}>
                                         <Text style={[styles.dateHeaderText, { color: isToday ? colors.primary : colors.textSecondary }]}>
                                             {isToday ? (t('common.today') || 'Today') : item.date}
+                                        </Text>
+                                        <Text style={{ fontSize: 13, fontWeight: '700', color: isToday ? colors.primary : colors.textSecondary }}>
+                                            {caloriesByDate[item.date]} kcal
                                         </Text>
                                     </View>
                                 )}
@@ -686,6 +707,38 @@ const styles = StyleSheet.create({
     statValue: { fontSize: 24, fontWeight: '800' },
     statUnit: { fontSize: 10, marginTop: 2 },
     avgContainer: { marginTop: 4, paddingHorizontal: 6, paddingVertical: 2, backgroundColor: 'rgba(0,0,0,0.05)', borderRadius: 4 },
+    // Profile Card Styles
+    profileCard: {
+        padding: 16,
+        borderRadius: 16,
+        marginBottom: 16,
+    },
+    profileHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+        marginBottom: 12,
+    },
+    profileTitle: {
+        flex: 1,
+        fontSize: 16,
+        fontWeight: '600',
+    },
+    profileStats: {
+        flexDirection: 'row',
+        justifyContent: 'space-around',
+    },
+    profileStatItem: {
+        alignItems: 'center',
+    },
+    profileStatValue: {
+        fontSize: 20,
+        fontWeight: 'bold',
+    },
+    profileStatLabel: {
+        fontSize: 11,
+        marginTop: 2,
+    },
     totalCard: { padding: 20, borderRadius: 20, alignItems: 'center', marginBottom: 24 },
     totalLabel: { fontSize: 14, fontWeight: '600', marginBottom: 8 },
     totalRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 16 },
@@ -769,7 +822,7 @@ const styles = StyleSheet.create({
     calcRow: { marginBottom: 8 },
     calcLabel: { fontSize: 13, fontWeight: '500', marginBottom: 2 },
     calcFormula: { fontSize: 14, fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace' },
-    calcValue: { fontSize: 20, fontWeight: '700' },
+    calcValue: { fontSize: 24, fontWeight: '800' },
     calcDivider: { height: 1, marginVertical: 16 },
     calcActivityLevel: { fontSize: 14, textAlign: 'center', marginTop: 8 },
     calcsCloseButton: { marginTop: 20, paddingVertical: 14, borderRadius: 12, alignItems: 'center' },
